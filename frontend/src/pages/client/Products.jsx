@@ -1,0 +1,1334 @@
+import React, { useEffect, useState } from "react";
+import {
+    Package,
+    Plus,
+    X,
+    Check,
+    Search,
+} from "lucide-react";
+import { useAuth } from "../../context/authContext";
+import Pagination from "../../components/Pagination";
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+const emptyForm = {
+    name: "",
+    sku: "",
+    barcode: "",
+    image: "",
+    unit_id: "",
+    category_id: "",
+    sub_category_id: "",
+    applicable_tax_id: "",
+    product_type: "single",
+    selling_price_tax_type: "exclusive",
+    enable_stock: false,
+    alert_quantity: "",
+    default_purchase_price_exc_tax: "",
+    default_purchase_price_inc_tax: "",
+    margin_percent: 0,
+    default_selling_price_exc_tax: "",
+    default_selling_price_inc_tax: "",
+    business_location_ids: [],
+};
+
+const Products = () => {
+    const { token, role, businessLocationId } = useAuth();
+
+    const [products, setProducts] = useState([]);
+
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+
+    const [error, setError] = useState(null);
+    const [formErrors, setFormErrors] = useState({});
+
+    const [showForm, setShowForm] = useState(false);
+
+    const [form, setForm] = useState(emptyForm);
+    const [taxRates, setTaxRates] = useState([]);
+    const [loadingTaxRates, setLoadingTaxRates] = useState(true);
+    const [showNewTaxRateForm, setShowNewTaxRateForm] = useState(false);
+    const [newTaxRate, setNewTaxRate] = useState({ name: "", rate_percent: "", tax_type: "gst" });
+    const [savingTaxRate, setSavingTaxRate] = useState(false);
+    const [taxRateError, setTaxRateError] = useState(null);
+
+    const [search, setSearch] = useState("");
+    const [units, setUnits] = useState([]);
+    const [categories, setCategories] = useState([]);
+    const [subCategories, setSubCategories] = useState([]);
+    const [businessLocations, setBusinessLocations] = useState([]);
+    const [editingProductId, setEditingProductId] = useState(null);
+
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 5;
+
+    const restrictedLocationRoles = ["cashier", "manager", "waiter"];
+    const normalizedRole = String(role || "").toLowerCase();
+    const isLocationRestrictedRole = restrictedLocationRoles.includes(
+        normalizedRole
+    );
+    const currentBusinessLocationId = Number(businessLocationId);
+    const visibleBusinessLocations =
+        isLocationRestrictedRole && currentBusinessLocationId
+            ? businessLocations.filter(
+                (location) => Number(location.id) === currentBusinessLocationId
+            )
+            : businessLocations;
+
+    useEffect(() => {
+        loadProducts();
+        loadFormOptions();
+        loadTaxRates();
+    }, []);
+
+    useEffect(() => {
+        const rate = getSelectedTaxRatePercent();
+
+        if (form.selling_price_tax_type === "exclusive") {
+            if (form.default_selling_price_exc_tax !== "") {
+                const inc = (
+                    Number(form.default_selling_price_exc_tax) *
+                    (1 + rate / 100)
+                ).toFixed(2);
+
+                setForm((prev) => ({
+                    ...prev,
+                    default_selling_price_inc_tax: inc,
+                }));
+            }
+        } else {
+            if (form.default_selling_price_inc_tax !== "") {
+                const exc = (
+                    Number(form.default_selling_price_inc_tax) /
+                    (1 + rate / 100)
+                ).toFixed(2);
+
+                setForm((prev) => ({
+                    ...prev,
+                    default_selling_price_exc_tax: exc,
+                }));
+            }
+        }
+    }, [form.applicable_tax_id, form.selling_price_tax_type, taxRates]);
+
+    function getSelectedTaxRatePercent() {
+        const tax = taxRates.find(
+            (t) => String(t.id) === String(form.applicable_tax_id)
+        );
+        return tax ? Number(tax.rate_percent) : 0;
+    }
+
+    function handleExcTaxPriceChange(e) {
+        const value = e.target.value;
+        const rate = getSelectedTaxRatePercent();
+        const incValue =
+            value === "" ? "" : (Number(value) * (1 + rate / 100)).toFixed(2);
+
+        setForm((prev) => ({
+            ...prev,
+            default_selling_price_exc_tax: value,
+            default_selling_price_inc_tax: incValue,
+        }));
+        setFormErrors((prev) => ({
+            ...prev,
+            default_selling_price_exc_tax: "",
+            default_selling_price_inc_tax: "",
+        }));
+    }
+
+    function handleIncTaxPriceChange(e) {
+        const value = e.target.value;
+        const rate = getSelectedTaxRatePercent();
+        const excValue =
+            value === "" ? "" : (Number(value) / (1 + rate / 100)).toFixed(2);
+
+        setForm((prev) => ({
+            ...prev,
+            default_selling_price_inc_tax: value,
+            default_selling_price_exc_tax: excValue,
+        }));
+        setFormErrors((prev) => ({
+            ...prev,
+            default_selling_price_inc_tax: "",
+            default_selling_price_exc_tax: "",
+        }));
+    }
+
+    async function loadTaxRates() {
+        setLoadingTaxRates(true);
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/tax-rates`, {
+                headers: {
+                    Accept: "application/json",
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
+            });
+            const json = await res.json();
+
+            if (!res.ok || !json.success) {
+                throw new Error(json.message || "Failed to load tax rates");
+            }
+
+            const data = json.data;
+            setTaxRates(
+                Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []
+            );
+        } catch (err) {
+            console.error("Load tax rates error:", err);
+            setTaxRates([]);
+        } finally {
+            setLoadingTaxRates(false);
+        }
+    }
+
+    async function createTaxRate() {
+        setSavingTaxRate(true);
+        setTaxRateError(null);
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/tax-rates`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Accept: "application/json",
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
+                body: JSON.stringify({
+                    name: newTaxRate.name.trim(),
+                    rate_percent: Number(newTaxRate.rate_percent),
+                    tax_type: newTaxRate.tax_type.trim(),
+                    is_active: true,
+                }),
+            });
+            const json = await res.json();
+
+            if (!res.ok || !json.success) {
+                throw new Error(json.message || "Failed to create tax rate");
+            }
+
+            const created = json.data?.data ?? json.data;
+
+            setTaxRates((prev) => [...prev, created]);
+            setForm((prev) => ({ ...prev, applicable_tax_id: created.id }));
+            setNewTaxRate({ name: "", rate_percent: "", tax_type: "gst" });
+            setShowNewTaxRateForm(false);
+        } catch (err) {
+            console.error("Create tax rate error:", err);
+            setTaxRateError(err.message);
+        } finally {
+            setSavingTaxRate(false);
+        }
+    }
+
+    async function loadFormOptions() {
+        try {
+            const headers = {
+                Accept: "application/json",
+                ...(token
+                    ? {
+                        Authorization: `Bearer ${token}`,
+                    }
+                    : {}),
+            };
+
+            const [
+                unitsRes,
+                categoriesRes,
+                subCategoriesRes,
+                businessLocationsRes,
+            ] = await Promise.all([
+                fetch(`${API_BASE_URL}/units`, {
+                    headers,
+                }),
+
+                fetch(`${API_BASE_URL}/categories`, {
+                    headers,
+                }),
+
+                fetch(`${API_BASE_URL}/sub-categories`, {
+                    headers,
+                }),
+
+                fetch(`${API_BASE_URL}/business-locations`, {
+                    headers,
+                }),
+            ]);
+
+            const [
+                unitsJson,
+                categoriesJson,
+                subCategoriesJson,
+                businessLocationsJson,
+            ] = await Promise.all([
+                unitsRes.json(),
+                categoriesRes.json(),
+                subCategoriesRes.json(),
+                businessLocationsRes.json(),
+            ]);
+
+            if (!unitsRes.ok || !unitsJson.success) {
+                throw new Error(
+                    unitsJson.message || "Failed to load units"
+                );
+            }
+
+            if (!categoriesRes.ok || !categoriesJson.success) {
+                throw new Error(
+                    categoriesJson.message ||
+                    "Failed to load categories"
+                );
+            }
+
+            if (
+                !subCategoriesRes.ok ||
+                !subCategoriesJson.success
+            ) {
+                throw new Error(
+                    subCategoriesJson.message ||
+                    "Failed to load sub categories"
+                );
+            }
+
+            if (
+                !businessLocationsRes.ok ||
+                !businessLocationsJson.success
+            ) {
+                throw new Error(
+                    businessLocationsJson.message ||
+                    "Failed to load business locations"
+                );
+            }
+
+            setUnits(
+                Array.isArray(unitsJson.data?.data)
+                    ? unitsJson.data.data
+                    : Array.isArray(unitsJson.data)
+                        ? unitsJson.data
+                        : []
+            );
+
+            setCategories(
+                Array.isArray(categoriesJson.data?.data)
+                    ? categoriesJson.data.data
+                    : Array.isArray(categoriesJson.data)
+                        ? categoriesJson.data
+                        : []
+            );
+
+            setSubCategories(
+                Array.isArray(subCategoriesJson.data?.data)
+                    ? subCategoriesJson.data.data
+                    : Array.isArray(subCategoriesJson.data)
+                        ? subCategoriesJson.data
+                        : []
+            );
+
+            setBusinessLocations(
+                Array.isArray(businessLocationsJson.data?.data)
+                    ? businessLocationsJson.data.data
+                    : Array.isArray(businessLocationsJson.data)
+                        ? businessLocationsJson.data
+                        : []
+            );
+        } catch (err) {
+            console.error("Load product form options error:", err);
+            setError(err.message);
+        }
+    }
+
+    async function loadProducts() {
+        setLoading(true);
+        setError(null);
+
+        try {
+            const res = await fetch(
+                `${API_BASE_URL}/products?per_page=1000`,
+                {
+                    headers: {
+                        Accept: "application/json",
+                        ...(token
+                            ? {
+                                Authorization: `Bearer ${token}`,
+                            }
+                            : {}),
+                    },
+                }
+            );
+
+            const json = await res.json();
+
+            console.log("PRODUCTS API RESPONSE:", json);
+
+            if (!res.ok || !json.success) {
+                throw new Error(
+                    json.message || "Failed to load products"
+                );
+            }
+
+            const paginatedData = json.data;
+            const allProducts = Array.isArray(paginatedData?.data)
+                ? paginatedData.data
+                : Array.isArray(paginatedData)
+                    ? paginatedData
+                    : [];
+
+            const visibleProducts =
+                isLocationRestrictedRole && currentBusinessLocationId
+                    ? allProducts.filter((product) =>
+                        Array.isArray(product.business_locations) &&
+                        product.business_locations.some(
+                            (location) =>
+                                Number(location.id) === currentBusinessLocationId
+                        )
+                    )
+                    : allProducts;
+
+            setProducts(visibleProducts);
+        } catch (err) {
+            console.error("Load products error:", err);
+
+            setError(err.message);
+            setProducts([]);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    function openCreateForm() {
+        const defaultLocationIds =
+            isLocationRestrictedRole && currentBusinessLocationId
+                ? [currentBusinessLocationId]
+                : [];
+
+        setForm({
+            ...emptyForm,
+            business_location_ids: defaultLocationIds,
+        });
+        setEditingProductId(null);
+        setFormErrors({});
+        setError(null);
+        setShowForm(true);
+    }
+
+    function openEditForm(product) {
+        setForm({
+            name: product.name ?? "",
+            sku: product.sku ?? "",
+            barcode: product.barcode ?? "",
+            image: "",
+            unit_id: product.unit?.id ?? product.unit_id ?? "",
+            category_id: product.category?.id ?? product.category_id ?? "",
+            sub_category_id: product.sub_category?.id ?? product.sub_category_id ?? "",
+            applicable_tax_id: product.applicable_tax_id ?? "",
+            product_type: product.product_type ?? "single",
+            selling_price_tax_type: product.selling_price_tax_type ?? "exclusive",
+            enable_stock: Boolean(product.enable_stock),
+            alert_quantity: product.alert_quantity ?? "",
+            default_purchase_price_exc_tax: product.default_purchase_price_exc_tax ?? "",
+            default_purchase_price_inc_tax: product.default_purchase_price_inc_tax ?? "",
+            margin_percent: product.margin_percent ?? 0,
+            default_selling_price_exc_tax: product.default_selling_price_exc_tax ?? "",
+            default_selling_price_inc_tax: product.default_selling_price_inc_tax ?? "",
+            business_location_ids: Array.isArray(product.business_locations)
+                ? product.business_locations.map((l) => Number(l.id))
+                : [],
+        });
+        setEditingProductId(product.id);
+        setFormErrors({});
+        setError(null);
+        setShowForm(true);
+    }
+
+    function closeForm() {
+        if (saving) return;
+
+        setShowForm(false);
+        setForm(emptyForm);
+        setFormErrors({});
+        setEditingProductId(null);
+    }
+
+    function handleChange(e) {
+        const { name, value, type, checked, files } = e.target;
+
+        setForm((prev) => ({
+            ...prev,
+            [name]: type === "checkbox"
+                ? checked
+                : type === "file"
+                    ? files?.[0] || null
+                    : value,
+        }));
+
+        setFormErrors((prev) => ({
+            ...prev,
+            [name]: "",
+        }));
+    }
+
+    async function handleSubmit(e) {
+        e.preventDefault();
+
+        setSaving(true);
+        setError(null);
+        setFormErrors({});
+
+        const formData = new FormData();
+
+        formData.append("name", form.name.trim());
+        formData.append("sku", form.sku.trim());
+        formData.append("barcode", form.barcode.trim() || "");
+
+        if (form.image instanceof File) {
+            formData.append("image", form.image);
+        }
+
+        formData.append("unit_id", String(Number(form.unit_id)));
+        formData.append("category_id", String(Number(form.category_id)));
+        formData.append("sub_category_id", String(Number(form.sub_category_id)));
+
+        if (form.applicable_tax_id === "") {
+            formData.append("applicable_tax_id", "");
+        } else {
+            formData.append("applicable_tax_id", String(Number(form.applicable_tax_id)));
+        }
+
+        formData.append("product_type", form.product_type);
+        formData.append("selling_price_tax_type", form.selling_price_tax_type);
+        formData.append("enable_stock", form.enable_stock ? "1" : "0");
+
+        if (form.alert_quantity === "") {
+            formData.append("alert_quantity", "");
+        } else {
+            formData.append("alert_quantity", String(Number(form.alert_quantity)));
+        }
+
+        formData.append(
+            "default_purchase_price_exc_tax",
+            String(Number(form.default_purchase_price_exc_tax))
+        );
+        formData.append(
+            "default_purchase_price_inc_tax",
+            String(Number(form.default_purchase_price_inc_tax))
+        );
+        formData.append("margin_percent", String(Number(form.margin_percent)));
+        formData.append(
+            "default_selling_price_exc_tax",
+            String(Number(form.default_selling_price_exc_tax))
+        );
+        formData.append(
+            "default_selling_price_inc_tax",
+            String(Number(form.default_selling_price_inc_tax))
+        );
+
+        form.business_location_ids.forEach((locationId) => {
+            formData.append("business_location_ids[]", String(Number(locationId)));
+        });
+
+        const isEditing = Boolean(editingProductId);
+
+        if (isEditing) {
+            formData.append("_method", "PUT");
+        }
+
+        try {
+            const url = isEditing
+                ? `${API_BASE_URL}/products/${editingProductId}`
+                : `${API_BASE_URL}/products`;
+
+            const res = await fetch(url, {
+                method: "POST",
+                headers: {
+                    Accept: "application/json",
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
+                body: formData,
+            });
+
+            const json = await res.json();
+
+            if (!res.ok || !json.success) {
+                if (json.errors) {
+                    setFormErrors(json.errors);
+                }
+
+                throw new Error(
+                    json.message || `Failed to ${isEditing ? "update" : "create"} product`
+                );
+            }
+
+            closeForm();
+            setCurrentPage(1);
+            await loadProducts();
+        } catch (err) {
+            console.error("Save product error:", err);
+            setError(err.message);
+        } finally {
+            setSaving(false);
+        }
+    }
+
+    function handleSearchChange(e) {
+        setSearch(e.target.value);
+        setCurrentPage(1);
+    }
+
+    const filteredProducts = products.filter((product) => {
+        const query = search.trim().toLowerCase();
+
+        if (!query) return true;
+
+        const productName = String(product.name || "").toLowerCase();
+        const productSku = String(product.sku || "").toLowerCase();
+
+        return (
+            productName.includes(query) ||
+            productSku.includes(query)
+        );
+    });
+
+    const totalPages = Math.ceil(
+        filteredProducts.length / itemsPerPage
+    );
+
+    const startIndex =
+        (currentPage - 1) * itemsPerPage;
+
+    const paginatedProducts = filteredProducts.slice(
+        startIndex,
+        startIndex + itemsPerPage
+    );
+
+    function getFormError(field) {
+        if (!formErrors[field]) return null;
+
+        return Array.isArray(formErrors[field])
+            ? formErrors[field][0]
+            : formErrors[field];
+    }
+
+    function inputClass(field) {
+        return `mt-1.5 w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm font-medium text-zinc-900 outline-none focus:border-[#40295C] ${formErrors[field]
+            ? "border-rose-400"
+            : "border-zinc-200/80"
+            }`;
+    }
+
+    function handlePageChange(page) {
+        setCurrentPage(page);
+    }
+
+    return (
+        <div className="min-h-screen bg-white text-zinc-800 antialiased p-6 md:p-8 lg:p-12">
+
+            <div className="flex flex-col gap-6 border-b border-zinc-100 pb-8 md:flex-row md:items-center md:justify-between">
+
+                <div>
+                    <h1 className="text-4xl font-extrabold tracking-tight text-[#40295C] sm:text-5xl">
+                        Products
+                    </h1>
+
+                    <p className="mt-2 text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                        {filteredProducts.length} Product
+                        {filteredProducts.length === 1 ? "" : "s"}
+                    </p>
+                </div>
+
+                <button
+                    onClick={openCreateForm}
+                    className="group flex items-center justify-center gap-2 rounded-full bg-[#40295C] px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#321f49] hover:scale-[1.01] active:scale-[0.99]"
+                >
+                    <Plus
+                        size={16}
+                        className="transition-transform group-hover:rotate-90"
+                    />
+
+                    New Product
+                </button>
+            </div>
+
+            {error && (
+                <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-600">
+                    {error}
+                </div>
+            )}
+
+            {showForm && (
+                <form
+                    onSubmit={handleSubmit}
+                    className="mt-6 rounded-2xl border border-zinc-200/60 bg-zinc-50/30 p-6"
+                >
+
+                    <div className="mb-6 flex items-center justify-between">
+
+                        <div>
+                            <h2 className="text-sm font-bold text-zinc-900">
+                                {editingProductId ? "Edit Product" : "New Product"}
+                            </h2>
+
+                            <p className="mt-1 text-xs text-zinc-400">
+                                {editingProductId ? "Update this product." : "Create a new product."}
+                            </p>
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={closeForm}
+                            disabled={saving}
+                            className="text-zinc-400 transition-colors hover:text-zinc-700 disabled:opacity-50"
+                        >
+                            <X size={18} />
+                        </button>
+
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+
+                        <div>
+                            <label className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                                Name
+                            </label>
+
+                            <input
+                                type="text"
+                                name="name"
+                                required
+                                value={form.name}
+                                onChange={handleChange}
+                                placeholder="Mutton Sukka"
+                                className={inputClass("name")}
+                            />
+
+                            {getFormError("name") && (
+                                <p className="mt-1 text-xs text-rose-500">
+                                    {getFormError("name")}
+                                </p>
+                            )}
+                        </div>
+
+                        <div>
+                            <label className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                                Barcode
+                            </label>
+
+                            <input
+                                type="text"
+                                name="barcode"
+                                value={form.barcode}
+                                onChange={handleChange}
+                                placeholder="Optional"
+                                className={inputClass("barcode")}
+                            />
+                        </div>
+
+                        <div>
+                            <label className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                                Image
+                            </label>
+
+                            <input
+                                type="file"
+                                name="image"
+                                accept="image/*"
+                                onChange={handleChange}
+                                className={inputClass("image")}
+                            />
+
+                            {form.image && (
+                                <p className="mt-1 text-xs text-zinc-500">
+                                    Selected: {form.image.name}
+                                </p>
+                            )}
+                        </div>
+
+                        <div>
+                            <label className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                                Unit
+                            </label>
+
+                            <select
+                                name="unit_id"
+                                value={form.unit_id}
+                                onChange={handleChange}
+                                className={inputClass("unit_id")}
+                                required
+                            >
+                                <option value="">Select Unit</option>
+
+                                {units.map((unit) => (
+                                    <option key={unit.id} value={unit.id}>
+                                        {unit.name}
+                                    </option>
+                                ))}
+                            </select>
+
+                            {getFormError("unit_id") && (
+                                <p className="mt-1 text-xs text-rose-500">
+                                    {getFormError("unit_id")}
+                                </p>
+                            )}
+                        </div>
+
+                        <div>
+                            <label className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                                Category
+                            </label>
+
+                            <select
+                                name="category_id"
+                                value={form.category_id}
+                                onChange={handleChange}
+                                className={inputClass("category_id")}
+                                required
+                            >
+                                <option value="">Select Category</option>
+
+                                {categories.map((category) => (
+                                    <option
+                                        key={category.id}
+                                        value={category.id}
+                                    >
+                                        {category.name}
+                                    </option>
+                                ))}
+                            </select>
+
+                            {getFormError("category_id") && (
+                                <p className="mt-1 text-xs text-rose-500">
+                                    {getFormError("category_id")}
+                                </p>
+                            )}
+                        </div>
+
+                        <div>
+                            <label className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                                Sub Category
+                            </label>
+
+                            <select
+                                name="sub_category_id"
+                                value={form.sub_category_id}
+                                onChange={handleChange}
+                                className={inputClass("sub_category_id")}
+                                required
+                            >
+                                <option value="">
+                                    Select Sub Category
+                                </option>
+
+                                {subCategories.map((subCategory) => (
+                                    <option
+                                        key={subCategory.id}
+                                        value={subCategory.id}
+                                    >
+                                        {subCategory.name}
+                                    </option>
+                                ))}
+                            </select>
+
+                            {getFormError("sub_category_id") && (
+                                <p className="mt-1 text-xs text-rose-500">
+                                    {getFormError("sub_category_id")}
+                                </p>
+                            )}
+                        </div>
+
+                        <div>
+                            <label className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                                Applicable Tax
+                            </label>
+
+                            {!showNewTaxRateForm ? (
+                                <>
+                                    <select
+                                        name="applicable_tax_id"
+                                        value={form.applicable_tax_id}
+                                        onChange={handleChange}
+                                        disabled={loadingTaxRates}
+                                        className={inputClass("applicable_tax_id")}
+                                    >
+                                        <option value="">
+                                            {loadingTaxRates ? "Loading tax rates..." : "No Tax"}
+                                        </option>
+                                        {taxRates.map((tax) => (
+                                            <option key={tax.id} value={tax.id}>
+                                                {tax.name} ({tax.rate_percent}%)
+                                            </option>
+                                        ))}
+                                    </select>
+
+                                    {getFormError("applicable_tax_id") && (
+                                        <p className="mt-1 text-xs text-rose-500">
+                                            {getFormError("applicable_tax_id")}
+                                        </p>
+                                    )}
+
+                                    {!loadingTaxRates && taxRates.length === 0 && (
+                                        <p className="mt-1 text-xs text-zinc-400">
+                                            No tax rates set up yet.
+                                        </p>
+                                    )}
+
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowNewTaxRateForm(true)}
+                                        className="mt-1.5 text-xs font-semibold text-[#40295C] hover:underline"
+                                    >
+                                        + Add new tax rate
+                                    </button>
+                                </>
+                            ) : (
+                                <div className="mt-1.5 space-y-2 rounded-xl border border-zinc-200/80 bg-white p-3">
+                                    {taxRateError && (
+                                        <p className="text-xs font-medium text-rose-500">{taxRateError}</p>
+                                    )}
+
+                                    <input
+                                        type="text"
+                                        placeholder="Name e.g. GST 5%"
+                                        value={newTaxRate.name}
+                                        onChange={(e) =>
+                                            setNewTaxRate((prev) => ({ ...prev, name: e.target.value }))
+                                        }
+                                        className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-xs font-medium outline-none focus:border-[#40295C]"
+                                    />
+
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            placeholder="Rate %"
+                                            value={newTaxRate.rate_percent}
+                                            onChange={(e) =>
+                                                setNewTaxRate((prev) => ({ ...prev, rate_percent: e.target.value }))
+                                            }
+                                            className="w-1/2 rounded-lg border border-zinc-200 px-3 py-2 text-xs font-medium outline-none focus:border-[#40295C]"
+                                        />
+
+                                        <input
+                                            type="text"
+                                            placeholder="Tax type e.g. gst"
+                                            value={newTaxRate.tax_type}
+                                            onChange={(e) =>
+                                                setNewTaxRate((prev) => ({ ...prev, tax_type: e.target.value }))
+                                            }
+                                            className="w-1/2 rounded-lg border border-zinc-200 px-3 py-2 text-xs font-medium outline-none focus:border-[#40295C]"
+                                        />
+                                    </div>
+
+                                    <div className="flex gap-2 pt-1">
+                                        <button
+                                            type="button"
+                                            disabled={
+                                                savingTaxRate || !newTaxRate.name.trim() || !newTaxRate.rate_percent
+                                            }
+                                            onClick={createTaxRate}
+                                            className="rounded-lg bg-[#40295C] px-3 py-1.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                                        >
+                                            {savingTaxRate ? "Saving..." : "Save Tax Rate"}
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            disabled={savingTaxRate}
+                                            onClick={() => {
+                                                setShowNewTaxRateForm(false);
+                                                setTaxRateError(null);
+                                            }}
+                                            className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-600 hover:bg-zinc-50"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        <div>
+                            <label className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                                Selling Price Tax Type
+                            </label>
+
+                            <select
+                                name="selling_price_tax_type"
+                                value={form.selling_price_tax_type}
+                                onChange={handleChange}
+                                className={inputClass(
+                                    "selling_price_tax_type"
+                                )}
+                            >
+                                <option value="exclusive">
+                                    Exclusive
+                                </option>
+
+                                <option value="inclusive">
+                                    Inclusive
+                                </option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                                Alert Quantity
+                            </label>
+
+                            <input
+                                type="number"
+                                name="alert_quantity"
+                                value={form.alert_quantity}
+                                onChange={handleChange}
+                                placeholder="Optional"
+                                className={inputClass(
+                                    "alert_quantity"
+                                )}
+                            />
+                        </div>
+
+                        <div>
+                            <label className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                                Margin %
+                            </label>
+
+                            <input
+                                type="number"
+                                step="0.01"
+                                name="margin_percent"
+                                value={form.margin_percent}
+                                onChange={handleChange}
+                                className={inputClass(
+                                    "margin_percent"
+                                )}
+                            />
+                        </div>
+
+                        <div>
+                            <label className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                                Selling Price Excl. Tax
+                            </label>
+
+                            <input
+                                type="number"
+                                step="0.01"
+                                name="default_selling_price_exc_tax"
+                                required
+                                value={form.default_selling_price_exc_tax}
+                                onChange={handleExcTaxPriceChange}
+                                readOnly={form.selling_price_tax_type === "inclusive"}
+                                placeholder="180.00"
+                                className={`${inputClass("default_selling_price_exc_tax")} ${form.selling_price_tax_type === "inclusive"
+                                    ? "bg-zinc-50 text-zinc-500"
+                                    : ""
+                                    }`}
+                            />
+
+                            {getFormError("default_selling_price_exc_tax") && (
+                                <p className="mt-1 text-xs text-rose-500">
+                                    {getFormError("default_selling_price_exc_tax")}
+                                </p>
+                            )}
+                        </div>
+
+                        <div>
+                            <label className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                                Selling Price Incl. Tax
+                            </label>
+
+                            <input
+                                type="number"
+                                step="0.01"
+                                name="default_selling_price_inc_tax"
+                                required
+                                value={form.default_selling_price_inc_tax}
+                                onChange={handleIncTaxPriceChange}
+                                readOnly={form.selling_price_tax_type === "exclusive"}
+                                placeholder="180.00"
+                                className={`${inputClass("default_selling_price_inc_tax")} ${form.selling_price_tax_type === "exclusive"
+                                    ? "bg-zinc-50 text-zinc-500"
+                                    : ""
+                                    }`}
+                            />
+
+                            {getFormError("default_selling_price_inc_tax") && (
+                                <p className="mt-1 text-xs text-rose-500">
+                                    {getFormError("default_selling_price_inc_tax")}
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="md:col-span-2 lg:col-span-3">
+                            <label className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                                Business Locations
+                            </label>
+
+                            <div className="mt-1.5 grid grid-cols-1 gap-2 rounded-xl border border-zinc-200/80 bg-white p-4 sm:grid-cols-2 lg:grid-cols-3">
+                                {visibleBusinessLocations.map((location) => {
+                                    const selected =
+                                        form.business_location_ids.includes(
+                                            Number(location.id)
+                                        );
+
+                                    return (
+                                        <label
+                                            key={location.id}
+                                            className="flex cursor-pointer items-center gap-3 rounded-lg p-2 hover:bg-zinc-50"
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={selected}
+                                                disabled={
+                                                    isLocationRestrictedRole &&
+                                                    Number(location.id) !==
+                                                    currentBusinessLocationId
+                                                }
+                                                onChange={(e) => {
+                                                    const id = Number(location.id);
+
+                                                    setForm((prev) => ({
+                                                        ...prev,
+                                                        business_location_ids:
+                                                            e.target.checked
+                                                                ? [
+                                                                    ...prev.business_location_ids,
+                                                                    id,
+                                                                ]
+                                                                : prev.business_location_ids.filter(
+                                                                    (locationId) =>
+                                                                        locationId !== id
+                                                                ),
+                                                    }));
+                                                }}
+                                                className="h-4 w-4 accent-[#40295C] disabled:cursor-not-allowed disabled:opacity-50"
+                                            />
+
+                                            <span className="text-sm font-medium text-zinc-700">
+                                                {location.name}
+                                            </span>
+                                        </label>
+                                    );
+                                })}
+                            </div>
+
+                            {getFormError("business_location_ids") && (
+                                <p className="mt-1 text-xs text-rose-500">
+                                    {getFormError("business_location_ids")}
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="flex items-center gap-3 rounded-xl border border-zinc-200/80 bg-white px-4 py-3">
+
+                            <input
+                                type="checkbox"
+                                name="enable_stock"
+                                checked={form.enable_stock}
+                                onChange={handleChange}
+                                className="h-4 w-4 accent-[#40295C]"
+                            />
+
+                            <div>
+                                <p className="text-sm font-semibold text-zinc-800">
+                                    Enable Stock
+                                </p>
+
+                                <p className="text-xs text-zinc-400">
+                                    Track stock for this product
+                                </p>
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <div className="mt-6 flex gap-3">
+
+                        <button
+                            type="submit"
+                            disabled={saving}
+                            className="flex items-center gap-1.5 rounded-xl bg-[#40295C] px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[#321f49] disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                            <Check size={14} />
+                            {saving
+                                ? (editingProductId ? "Updating..." : "Creating...")
+                                : (editingProductId ? "Update Product" : "Create Product")}
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={closeForm}
+                            disabled={saving}
+                            className="rounded-xl border border-zinc-200 bg-white px-5 py-2.5 text-sm font-semibold text-zinc-600 hover:bg-zinc-50"
+                        >
+                            Cancel
+                        </button>
+
+                    </div>
+
+                </form>
+            )}
+
+            <div className="mt-8">
+                <div className="relative max-w-md">
+                    <Search
+                        size={17}
+                        className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400"
+                    />
+
+                    <input
+                        type="text"
+                        value={search}
+                        onChange={handleSearchChange}
+                        placeholder="Search by product name or SKU..."
+                        className="w-full rounded-xl border border-zinc-200 bg-white py-3 pl-10 pr-4 text-sm outline-none focus:border-[#40295C]"
+                    />
+                </div>
+            </div>
+
+            <div className="mt-6 overflow-hidden rounded-2xl border border-zinc-200/60 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+
+                {loading ? (
+                    <p className="p-6 text-sm font-medium text-zinc-400">
+                        Loading products...
+                    </p>
+                ) : products.length === 0 ? (
+                    <div className="p-10 text-center">
+
+                        <Package
+                            className="mx-auto text-zinc-300"
+                            size={30}
+                        />
+
+                        <p className="mt-3 text-sm font-medium text-zinc-400">
+                            {search
+                                ? "No products found."
+                                : "No products yet."}
+                        </p>
+
+                    </div>
+                ) : (
+                    <div className="divide-y divide-zinc-100">
+
+                        {paginatedProducts.map((product) => (
+                            <div
+                                key={product.id}
+                                className="flex flex-col gap-5 p-6 transition-colors hover:bg-zinc-50/30 lg:flex-row lg:items-center lg:justify-between"
+                            >
+
+                                <div className="flex items-start gap-4">
+
+                                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#40295C]/5 text-[#40295C]">
+                                        <Package size={18} />
+                                    </div>
+
+                                    <div>
+
+                                        <h3 className="text-sm font-semibold text-zinc-950">
+                                            {product.name}
+                                        </h3>
+
+                                        <div className="mt-1 flex flex-wrap gap-3 text-xs text-zinc-400">
+
+                                            {product.sku && (
+                                                <span>
+                                                    SKU: {product.sku}
+                                                </span>
+                                            )}
+
+                                            {product.category?.name && (
+                                                <span>
+                                                    Category:{" "}
+                                                    {product.category.name}
+                                                </span>
+                                            )}
+
+                                            {product.sub_category?.name && (
+                                                <span>
+                                                    Sub Category:{" "}
+                                                    {product.sub_category.name}
+                                                </span>
+                                            )}
+
+                                            {product.business_locations?.length > 0 && (
+                                                <span>
+                                                    Branch:{" "}
+                                                    {product.business_locations
+                                                        .map((location) => location.name)
+                                                        .join(", ")}
+                                                </span>
+                                            )}
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-5 lg:justify-end">
+
+                                    <div>
+                                        <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+                                            Selling Price
+                                        </p>
+
+                                        <p className="mt-1 text-sm font-bold text-zinc-900">
+                                            ₹
+                                            {
+                                                product.default_selling_price_inc_tax ??
+                                                product.default_selling_price_exc_tax ??
+                                                "0.00"
+                                            }
+                                        </p>
+                                    </div>
+
+                                    {/* <div>
+                                        <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+                                            Purchase Price
+                                        </p>
+
+                                        <p className="mt-1 text-sm font-semibold text-zinc-700">
+                                            ₹
+                                            {
+                                                product.default_purchase_price_inc_tax ??
+                                                product.default_purchase_price_exc_tax ??
+                                                "0.00"
+                                            }
+                                        </p>
+                                    </div> */}
+
+                                    <button
+                                        type="button"
+                                        onClick={() => openEditForm(product)}
+                                        className="rounded-lg border border-zinc-200 px-3 py-2 text-xs font-semibold text-zinc-600 hover:bg-zinc-50"
+                                    >
+                                        Edit
+                                    </button>
+
+
+                                </div>
+
+                            </div>
+                        ))}
+
+                    </div>
+                )}
+
+            </div>
+
+            {!loading &&
+                products.length > 0 &&
+                totalPages > 1 && (
+                    <div className="mt-6">
+                        <Pagination
+                            currentPage={currentPage}
+                            totalPages={totalPages}
+                            onPageChange={handlePageChange}
+                        />
+                    </div>
+                )}
+
+        </div>
+    );
+};
+
+export default Products;
