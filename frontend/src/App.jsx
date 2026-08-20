@@ -21,6 +21,7 @@ import Products from "./pages/client/Products";
 import POS from "./pages/client/Pos";
 import Sales from "./pages/client/Sales";
 import KotPrinterSettings from "./pages/client/KotPrinterSettings";
+import POSDashboard from "./pages/client/StaticPOS";
 
 const CLIENT_ROLES = ["admin", "manager", "cashier", "waiter"];
 
@@ -89,6 +90,16 @@ function App() {
                     <Route path="/admin-pos" element={<ClientPermission><POS /></ClientPermission>} />
                     <Route path="/admin-sales" element={<ClientPermission><Sales /></ClientPermission>} />
                     <Route path="/admin-kot-settings" element={<ClientPermission><KotPrinterSettings /></ClientPermission>} />
+                </Route>
+
+                <Route
+                    element={
+                        <PrivateRoute portal="client" loginPath="/client-login">
+                            <MainLayout hideHeader fullscreen />
+                        </PrivateRoute>
+                    }
+                >
+                    <Route path="/static-pos" element={<ClientPermission><POSDashboard /></ClientPermission>} />
                 </Route>
             </Routes>
             <Toaster position="top-right" reverseOrder={false} duration={2000} />

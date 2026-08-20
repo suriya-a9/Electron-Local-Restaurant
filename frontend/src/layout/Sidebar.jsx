@@ -126,6 +126,13 @@ const ADMIN_NAVIGATION = [
         path: "/admin-kot-settings",
         icon: Printer,
         roles: ["admin", "manager", "cashier", "waiter"],
+    },
+    {
+        id: "pos",
+        label: "POS",
+        path: "/static-pos",
+        icon: Printer,
+        roles: ["admin", "manager", "cashier", "waiter"],
     }
 ];
 

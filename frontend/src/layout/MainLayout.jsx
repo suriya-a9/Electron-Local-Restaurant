@@ -3,7 +3,7 @@ import { Outlet } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
 
-const MainLayout = () => {
+const MainLayout = ({ hideHeader = false, fullscreen = false }) => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
 
@@ -41,7 +41,7 @@ const MainLayout = () => {
 
     return (
         <div className="flex flex-col h-screen bg-[#f5f7fa]">
-            <Header />
+            {!hideHeader && <Header />}
 
             <div className="flex flex-1 overflow-hidden relative">
 
@@ -73,12 +73,13 @@ const MainLayout = () => {
                     closeSidebar={closeSidebar}
                 />
 
-                <main className="flex-1 overflow-y-auto p-4 pt-16 sm:p-6 sm:pt-18 md:p-8 md:pt-8 bg-[#f5f7fa] w-full min-w-0
+                <main className={`flex-1 overflow-y-auto bg-[#f5f7fa] w-full min-w-0
+                    ${fullscreen ? "p-0" : "p-4 pt-16 sm:p-6 sm:pt-18 md:p-8 md:pt-8"}
                     [&::-webkit-scrollbar]:w-1.5
                     [&::-webkit-scrollbar-track]:bg-transparent
                     [&::-webkit-scrollbar-thumb]:bg-[#cbd5e0]
                     [&::-webkit-scrollbar-thumb]:rounded-[3px]
-                    hover:[&::-webkit-scrollbar-thumb]:bg-[#a0aec0]"
+                    hover:[&::-webkit-scrollbar-thumb]:bg-[#a0aec0]`}
                 >
                     <Outlet />
                 </main>
