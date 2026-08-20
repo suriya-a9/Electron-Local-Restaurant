@@ -49,7 +49,7 @@ const ClientList = () => {
         setError(null);
 
         try {
-            const res = await fetch(`${API_BASE_URL}/clients`, {
+            const res = await fetch(`${API_BASE_URL}/api/clients`, {
                 headers: {
                     Accept: "application/json",
                     ...(token
@@ -144,7 +144,7 @@ const ClientList = () => {
 
         try {
             const res = await fetch(
-                `${API_BASE_URL}/auth/register`,
+                `${API_BASE_URL}/api/clients`,
                 {
                     method: "POST",
                     headers: {
@@ -188,7 +188,7 @@ const ClientList = () => {
 
         try {
             const res = await fetch(
-                `${API_BASE_URL}/clients/${client.id}/change-status`,
+                `${API_BASE_URL}/api/clients/${client.id}/change-status`,
                 {
                     method: "POST",
                     headers: {

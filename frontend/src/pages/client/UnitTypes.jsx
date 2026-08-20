@@ -5,6 +5,8 @@ import {
     X,
     Check,
     Search,
+    Pencil,
+    Trash2,
 } from "lucide-react";
 import { useAuth } from "../../context/authContext";
 import Pagination from "../../components/Pagination";
@@ -24,13 +26,17 @@ const Units = () => {
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [deletingId, setDeletingId] = useState(null);
 
     const [error, setError] = useState(null);
     const [formErrors, setFormErrors] = useState({});
 
     const [showForm, setShowForm] = useState(false);
+    const [editingId, setEditingId] = useState(null);
 
     const [form, setForm] = useState(emptyForm);
+
+    const [deleteTarget, setDeleteTarget] = useState(null);
 
     const [search, setSearch] = useState("");
 
@@ -41,22 +47,26 @@ const Units = () => {
         loadUnits();
     }, []);
 
+    function authHeaders() {
+        return {
+            Accept: "application/json",
+            ...(token
+                ? {
+                    Authorization: `Bearer ${token}`,
+                }
+                : {}),
+        };
+    }
+
     async function loadUnits() {
         setLoading(true);
         setError(null);
 
         try {
             const res = await fetch(
-                `${API_BASE_URL}/units?per_page=1000`,
+                `${API_BASE_URL}/api/client/units?per_page=1000`,
                 {
-                    headers: {
-                        Accept: "application/json",
-                        ...(token
-                            ? {
-                                Authorization: `Bearer ${token}`,
-                            }
-                            : {}),
-                    },
+                    headers: authHeaders(),
                 }
             );
 
@@ -91,7 +101,20 @@ const Units = () => {
     }
 
     function openCreateForm() {
+        setEditingId(null);
         setForm(emptyForm);
+        setFormErrors({});
+        setError(null);
+        setShowForm(true);
+    }
+
+    function openEditForm(unit) {
+        setEditingId(unit.id);
+        setForm({
+            name: unit.name || "",
+            short_name: unit.short_name || "",
+            allow_decimal: !!unit.allow_decimal,
+        });
         setFormErrors({});
         setError(null);
         setShowForm(true);
@@ -101,6 +124,7 @@ const Units = () => {
         if (saving) return;
 
         setShowForm(false);
+        setEditingId(null);
         setForm(emptyForm);
         setFormErrors({});
     }
@@ -132,27 +156,30 @@ const Units = () => {
             allow_decimal: form.allow_decimal,
         };
 
+        const isEditing = Boolean(editingId);
+
+        const url = isEditing
+            ? `${API_BASE_URL}/api/client/units/${editingId}`
+            : `${API_BASE_URL}/api/client/units`;
+
         try {
-            const res = await fetch(
-                `${API_BASE_URL}/units`,
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Accept: "application/json",
-                        ...(token
-                            ? {
-                                Authorization: `Bearer ${token}`,
-                            }
-                            : {}),
-                    },
-                    body: JSON.stringify(payload),
-                }
-            );
+            const res = await fetch(url, {
+                method: isEditing ? "PUT" : "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    ...authHeaders(),
+                },
+                body: JSON.stringify(payload),
+            });
 
             const json = await res.json();
 
-            console.log("CREATE UNIT RESPONSE:", json);
+            console.log(
+                isEditing
+                    ? "UPDATE UNIT RESPONSE:"
+                    : "CREATE UNIT RESPONSE:",
+                json
+            );
 
             if (!res.ok || !json.success) {
                 if (json.errors) {
@@ -160,22 +187,85 @@ const Units = () => {
                 }
 
                 throw new Error(
-                    json.message || "Failed to create unit"
+                    json.message ||
+                    `Failed to ${isEditing ? "update" : "create"} unit`
                 );
             }
 
             closeForm();
 
-            setCurrentPage(1);
+            if (!isEditing) {
+                setCurrentPage(1);
+            }
 
             await loadUnits();
 
         } catch (err) {
-            console.error("Save unit error:", err);
+            console.error(
+                isEditing
+                    ? "Update unit error:"
+                    : "Save unit error:",
+                err
+            );
 
             setError(err.message);
         } finally {
             setSaving(false);
+        }
+    }
+
+    function requestDelete(unit) {
+        setError(null);
+        setDeleteTarget(unit);
+    }
+
+    function cancelDelete() {
+        if (deletingId) return;
+        setDeleteTarget(null);
+    }
+
+    async function confirmDelete() {
+        if (!deleteTarget) return;
+
+        setDeletingId(deleteTarget.id);
+        setError(null);
+
+        try {
+            const res = await fetch(
+                `${API_BASE_URL}/api/client/units/${deleteTarget.id}`,
+                {
+                    method: "DELETE",
+                    headers: authHeaders(),
+                }
+            );
+
+            const json = await res.json();
+
+            console.log("DELETE UNIT RESPONSE:", json);
+
+            if (!res.ok || !json.success) {
+                throw new Error(
+                    json.message || "Failed to delete unit"
+                );
+            }
+
+            setDeleteTarget(null);
+
+            const remainingOnPage =
+                paginatedUnits.length === 1 && currentPage > 1;
+
+            if (remainingOnPage) {
+                setCurrentPage((prev) => prev - 1);
+            }
+
+            await loadUnits();
+
+        } catch (err) {
+            console.error("Delete unit error:", err);
+
+            setError(err.message);
+        } finally {
+            setDeletingId(null);
         }
     }
 
@@ -225,6 +315,8 @@ const Units = () => {
         setCurrentPage(page);
     }
 
+    const isEditing = Boolean(editingId);
+
     return (
         <div className="min-h-screen bg-white text-zinc-800 antialiased p-6 md:p-8 lg:p-12">
 
@@ -272,11 +364,15 @@ const Units = () => {
 
                         <div>
                             <h2 className="text-sm font-bold text-zinc-900">
-                                New Unit
+                                {isEditing
+                                    ? "Edit Unit"
+                                    : "New Unit"}
                             </h2>
 
                             <p className="mt-1 text-xs text-zinc-400">
-                                Create a new unit of measurement.
+                                {isEditing
+                                    ? "Update this unit of measurement."
+                                    : "Create a new unit of measurement."}
                             </p>
                         </div>
 
@@ -368,8 +464,12 @@ const Units = () => {
                             <Check size={14} />
 
                             {saving
-                                ? "Creating..."
-                                : "Create Unit"}
+                                ? isEditing
+                                    ? "Saving..."
+                                    : "Creating..."
+                                : isEditing
+                                    ? "Save Changes"
+                                    : "Create Unit"}
                         </button>
 
                         <button
@@ -471,6 +571,26 @@ const Units = () => {
 
                                 </div>
 
+                                <div className="flex shrink-0 items-center gap-2 lg:pl-4">
+
+                                    <button
+                                        onClick={() => openEditForm(unit)}
+                                        className="flex items-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-2 text-xs font-semibold text-zinc-600 transition-colors hover:border-[#40295C]/30 hover:text-[#40295C]"
+                                    >
+                                        <Pencil size={13} />
+                                        Edit
+                                    </button>
+
+                                    <button
+                                        onClick={() => requestDelete(unit)}
+                                        className="flex items-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-2 text-xs font-semibold text-zinc-600 transition-colors hover:border-rose-300 hover:text-rose-600"
+                                    >
+                                        <Trash2 size={13} />
+                                        Delete
+                                    </button>
+
+                                </div>
+
                             </div>
                         ))}
 
@@ -490,6 +610,49 @@ const Units = () => {
                         />
                     </div>
                 )}
+
+            {deleteTarget && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/40 p-4">
+
+                    <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+
+                        <h3 className="text-sm font-bold text-zinc-900">
+                            Delete this unit?
+                        </h3>
+
+                        <p className="mt-2 text-sm text-zinc-500">
+                            <span className="font-semibold text-zinc-700">
+                                {deleteTarget.name}
+                            </span>{" "}
+                            will be permanently removed. This can't be undone.
+                        </p>
+
+                        <div className="mt-6 flex gap-3">
+
+                            <button
+                                onClick={confirmDelete}
+                                disabled={deletingId === deleteTarget.id}
+                                className="flex items-center gap-1.5 rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                <Trash2 size={14} />
+
+                                {deletingId === deleteTarget.id
+                                    ? "Deleting..."
+                                    : "Delete"}
+                            </button>
+
+                            <button
+                                onClick={cancelDelete}
+                                disabled={deletingId === deleteTarget.id}
+                                className="rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-600 hover:bg-zinc-50"
+                            >
+                                Cancel
+                            </button>
+
+                        </div>
+                    </div>
+                </div>
+            )}
 
         </div>
     );

@@ -47,8 +47,9 @@ const ClientDashboard = () => {
     const [error, setError] = useState(null);
 
     useEffect(() => {
+        if (authLoading || !token) return;
         loadLocations();
-    }, []);
+    }, [authLoading, token]);
 
     useEffect(() => {
         if (authBusinessLocationId) {
@@ -57,15 +58,16 @@ const ClientDashboard = () => {
     }, [authBusinessLocationId]);
 
     useEffect(() => {
+        if (authLoading || !token) return;
         if (period === "custom" && showCustomPicker) return;
         loadSummary();
-    }, [period, selectedLocationId, fromDate, toDate, showCustomPicker]);
+    }, [authLoading, token, period, selectedLocationId, fromDate, toDate, showCustomPicker]);
 
     async function loadLocations() {
         setLoadingLocations(true);
 
         try {
-            const res = await fetch(`${API_BASE_URL}/business-locations?per_page=1000`, {
+            const res = await fetch(`${API_BASE_URL}/api/client/business-locations?per_page=1000`, {
                 headers: { Accept: "application/json", ...authHeaders },
             });
             const json = await res.json();
@@ -108,7 +110,7 @@ const ClientDashboard = () => {
         try {
             const params = buildParams();
 
-            const res = await fetch(`${API_BASE_URL}/dashboard/summary?${params.toString()}`, {
+            const res = await fetch(`${API_BASE_URL}/api/client/dashboard/summary?${params.toString()}`, {
                 headers: { Accept: "application/json", ...authHeaders },
             });
             const json = await res.json();

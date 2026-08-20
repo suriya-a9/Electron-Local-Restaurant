@@ -57,7 +57,7 @@ const Sales = () => {
         setLoadingLocations(true);
 
         try {
-            const res = await fetch(`${API_BASE_URL}/business-locations?per_page=1000`, {
+            const res = await fetch(`${API_BASE_URL}/api/client/business-locations?per_page=1000`, {
                 headers: { Accept: "application/json", ...authHeaders },
             });
             const json = await res.json();
@@ -87,7 +87,7 @@ const Sales = () => {
                 ? `?business_location_id=${businessLocationId}&per_page=1000`
                 : "?per_page=1000";
 
-            const res = await fetch(`${API_BASE_URL}/sales${query}`, {
+            const res = await fetch(`${API_BASE_URL}/api/sales${query}`, {
                 headers: { Accept: "application/json", ...authHeaders },
             });
 
@@ -122,7 +122,7 @@ const Sales = () => {
         setSelectedSaleLoading(true);
 
         try {
-            const res = await fetch(`${API_BASE_URL}/sales/${id}`, {
+            const res = await fetch(`${API_BASE_URL}/api/sales/${id}`, {
                 headers: { Accept: "application/json", ...authHeaders },
             });
             const json = await res.json();
@@ -144,7 +144,7 @@ const Sales = () => {
         setCancellingId(id);
 
         try {
-            const res = await fetch(`${API_BASE_URL}/sales/${id}`, {
+            const res = await fetch(`${API_BASE_URL}/api/sales/${id}`, {
                 method: "DELETE",
                 headers: { Accept: "application/json", ...authHeaders },
             });
@@ -182,7 +182,7 @@ const Sales = () => {
 
                     <select
                         value={selectedLocationId || ""}
-                        onChange={(e) => setSelectedLocationId(Number(e.target.value) || null)}
+                        onChange={(e) => setSelectedLocationId(e.target.value || null)}
                         disabled={loadingLocations}
                         className="rounded-xl border border-amber-300 bg-white px-3.5 py-2 text-sm font-semibold text-zinc-800 outline-none focus:border-[#40295C]"
                     >
@@ -216,7 +216,7 @@ const Sales = () => {
                                 <p className="p-4 text-xs font-medium text-zinc-400">No sales found.</p>
                             ) : (
                                 <div className="divide-y divide-zinc-100">
-                                    {salesList.map((sale) => (
+                                    {salesList.map((sale, index) => (
                                         <button
                                             key={sale.id}
                                             onClick={() => viewSale(sale.id)}
@@ -224,10 +224,10 @@ const Sales = () => {
                                         >
                                             <div>
                                                 <p className="text-xs font-bold text-zinc-900">
-                                                    {sale.invoice_no || `Sale #${sale.id}`}
+                                                    {`Sale #${index + 1}`}
                                                 </p>
                                                 <p className="text-[11px] text-zinc-500">
-                                                    {sale.customer_name || "Walk-In Customer"} · {sale.sale_type}
+                                                    {sale.customer_name || "Walk-In Customer"} · {sale.sale_type} · {sale.business_location_name || "-"}
                                                 </p>
                                             </div>
                                             <ChevronRight size={14} className="text-zinc-300" />
@@ -251,14 +251,22 @@ const Sales = () => {
                                 <div className="space-y-4">
                                     <div>
                                         <p className="text-sm font-bold text-zinc-900">
-                                            {selectedSale.invoice_no || `Sale #${selectedSale.id}`}
+                                            Sale Details
                                         </p>
                                         <p className="mt-0.5 text-xs text-zinc-500">
-                                            {formatDate(selectedSale.sale_date)}
+                                            {formatDate(selectedSale.created_at)}
                                         </p>
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-x-3 gap-y-2 rounded-xl border border-zinc-100 bg-zinc-50 p-3 text-xs">
+                                        <div className="col-span-2">
+                                            <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
+                                                Sale ID
+                                            </p>
+                                            <p className="break-all font-semibold text-zinc-800">
+                                                {selectedSale.id}
+                                            </p>
+                                        </div>
                                         <div>
                                             <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
                                                 Customer
@@ -280,7 +288,7 @@ const Sales = () => {
                                                 Business Location
                                             </p>
                                             <p className="font-semibold text-zinc-800">
-                                                {selectedSale.business_location?.name || "-"}
+                                                {selectedSale.business_location_name || "-"}
                                             </p>
                                         </div>
                                         <div>
@@ -328,14 +336,14 @@ const Sales = () => {
                                         </div>
                                     </div>
 
-                                    <button
+                                    {/* <button
                                         onClick={() => cancelSale(selectedSale.id)}
                                         disabled={cancellingId === selectedSale.id}
                                         className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-rose-200 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 disabled:opacity-60"
                                     >
                                         <Trash2 size={13} />
                                         {cancellingId === selectedSale.id ? "Cancelling..." : "Cancel Sale"}
-                                    </button>
+                                    </button> */}
                                 </div>
                             )}
                         </div>

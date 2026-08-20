@@ -5,6 +5,8 @@ import {
     X,
     Check,
     Search,
+    Pencil,
+    Trash2,
 } from "lucide-react";
 import { useAuth } from "../../context/authContext";
 import Pagination from "../../components/Pagination";
@@ -23,13 +25,17 @@ const Categories = () => {
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [deletingId, setDeletingId] = useState(null);
 
     const [error, setError] = useState(null);
     const [formErrors, setFormErrors] = useState({});
 
     const [showForm, setShowForm] = useState(false);
+    const [editingId, setEditingId] = useState(null);
 
     const [form, setForm] = useState(emptyForm);
+
+    const [deleteTarget, setDeleteTarget] = useState(null);
 
     const [search, setSearch] = useState("");
 
@@ -40,22 +46,26 @@ const Categories = () => {
         loadCategories();
     }, []);
 
+    function authHeaders() {
+        return {
+            Accept: "application/json",
+            ...(token
+                ? {
+                    Authorization: `Bearer ${token}`,
+                }
+                : {}),
+        };
+    }
+
     async function loadCategories() {
         setLoading(true);
         setError(null);
 
         try {
             const res = await fetch(
-                `${API_BASE_URL}/categories?per_page=1000`,
+                `${API_BASE_URL}/api/client/categories?per_page=1000`,
                 {
-                    headers: {
-                        Accept: "application/json",
-                        ...(token
-                            ? {
-                                Authorization: `Bearer ${token}`,
-                            }
-                            : {}),
-                    },
+                    headers: authHeaders(),
                 }
             );
 
@@ -90,7 +100,19 @@ const Categories = () => {
     }
 
     function openCreateForm() {
+        setEditingId(null);
         setForm(emptyForm);
+        setFormErrors({});
+        setError(null);
+        setShowForm(true);
+    }
+
+    function openEditForm(category) {
+        setEditingId(category.id);
+        setForm({
+            name: category.name || "",
+            description: category.description || "",
+        });
         setFormErrors({});
         setError(null);
         setShowForm(true);
@@ -100,6 +122,7 @@ const Categories = () => {
         if (saving) return;
 
         setShowForm(false);
+        setEditingId(null);
         setForm(emptyForm);
         setFormErrors({});
     }
@@ -130,27 +153,30 @@ const Categories = () => {
             description: form.description.trim(),
         };
 
+        const isEditing = Boolean(editingId);
+
+        const url = isEditing
+            ? `${API_BASE_URL}/api/client/categories/${editingId}`
+            : `${API_BASE_URL}/api/client/categories`;
+
         try {
-            const res = await fetch(
-                `${API_BASE_URL}/categories`,
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Accept: "application/json",
-                        ...(token
-                            ? {
-                                Authorization: `Bearer ${token}`,
-                            }
-                            : {}),
-                    },
-                    body: JSON.stringify(payload),
-                }
-            );
+            const res = await fetch(url, {
+                method: isEditing ? "PUT" : "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    ...authHeaders(),
+                },
+                body: JSON.stringify(payload),
+            });
 
             const json = await res.json();
 
-            console.log("CREATE CATEGORY RESPONSE:", json);
+            console.log(
+                isEditing
+                    ? "UPDATE CATEGORY RESPONSE:"
+                    : "CREATE CATEGORY RESPONSE:",
+                json
+            );
 
             if (!res.ok || !json.success) {
                 if (json.errors) {
@@ -158,22 +184,85 @@ const Categories = () => {
                 }
 
                 throw new Error(
-                    json.message || "Failed to create category"
+                    json.message ||
+                    `Failed to ${isEditing ? "update" : "create"} category`
                 );
             }
 
             closeForm();
 
-            setCurrentPage(1);
+            if (!isEditing) {
+                setCurrentPage(1);
+            }
 
             await loadCategories();
 
         } catch (err) {
-            console.error("Save category error:", err);
+            console.error(
+                isEditing
+                    ? "Update category error:"
+                    : "Save category error:",
+                err
+            );
 
             setError(err.message);
         } finally {
             setSaving(false);
+        }
+    }
+
+    function requestDelete(category) {
+        setError(null);
+        setDeleteTarget(category);
+    }
+
+    function cancelDelete() {
+        if (deletingId) return;
+        setDeleteTarget(null);
+    }
+
+    async function confirmDelete() {
+        if (!deleteTarget) return;
+
+        setDeletingId(deleteTarget.id);
+        setError(null);
+
+        try {
+            const res = await fetch(
+                `${API_BASE_URL}/api/client/categories/${deleteTarget.id}`,
+                {
+                    method: "DELETE",
+                    headers: authHeaders(),
+                }
+            );
+
+            const json = await res.json();
+
+            console.log("DELETE CATEGORY RESPONSE:", json);
+
+            if (!res.ok || !json.success) {
+                throw new Error(
+                    json.message || "Failed to delete category"
+                );
+            }
+
+            setDeleteTarget(null);
+
+            const remainingOnPage =
+                paginatedCategories.length === 1 && currentPage > 1;
+
+            if (remainingOnPage) {
+                setCurrentPage((prev) => prev - 1);
+            }
+
+            await loadCategories();
+
+        } catch (err) {
+            console.error("Delete category error:", err);
+
+            setError(err.message);
+        } finally {
+            setDeletingId(null);
         }
     }
 
@@ -223,6 +312,8 @@ const Categories = () => {
         setCurrentPage(page);
     }
 
+    const isEditing = Boolean(editingId);
+
     return (
         <div className="min-h-screen bg-white text-zinc-800 antialiased p-6 md:p-8 lg:p-12">
 
@@ -270,11 +361,15 @@ const Categories = () => {
 
                         <div>
                             <h2 className="text-sm font-bold text-zinc-900">
-                                New Category
+                                {isEditing
+                                    ? "Edit Category"
+                                    : "New Category"}
                             </h2>
 
                             <p className="mt-1 text-xs text-zinc-400">
-                                Create a new category.
+                                {isEditing
+                                    ? "Update this category's details."
+                                    : "Create a new category."}
                             </p>
                         </div>
 
@@ -345,8 +440,12 @@ const Categories = () => {
                             <Check size={14} />
 
                             {saving
-                                ? "Creating..."
-                                : "Create Category"}
+                                ? isEditing
+                                    ? "Saving..."
+                                    : "Creating..."
+                                : isEditing
+                                    ? "Save Changes"
+                                    : "Create Category"}
                         </button>
 
                         <button
@@ -436,6 +535,26 @@ const Categories = () => {
 
                                 </div>
 
+                                <div className="flex shrink-0 items-center gap-2 lg:pl-4">
+
+                                    <button
+                                        onClick={() => openEditForm(category)}
+                                        className="flex items-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-2 text-xs font-semibold text-zinc-600 transition-colors hover:border-[#40295C]/30 hover:text-[#40295C]"
+                                    >
+                                        <Pencil size={13} />
+                                        Edit
+                                    </button>
+
+                                    <button
+                                        onClick={() => requestDelete(category)}
+                                        className="flex items-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-2 text-xs font-semibold text-zinc-600 transition-colors hover:border-rose-300 hover:text-rose-600"
+                                    >
+                                        <Trash2 size={13} />
+                                        Delete
+                                    </button>
+
+                                </div>
+
                             </div>
                         ))}
 
@@ -455,6 +574,49 @@ const Categories = () => {
                         />
                     </div>
                 )}
+
+            {deleteTarget && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/40 p-4">
+
+                    <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+
+                        <h3 className="text-sm font-bold text-zinc-900">
+                            Delete this category?
+                        </h3>
+
+                        <p className="mt-2 text-sm text-zinc-500">
+                            <span className="font-semibold text-zinc-700">
+                                {deleteTarget.name}
+                            </span>{" "}
+                            will be permanently removed. This can't be undone.
+                        </p>
+
+                        <div className="mt-6 flex gap-3">
+
+                            <button
+                                onClick={confirmDelete}
+                                disabled={deletingId === deleteTarget.id}
+                                className="flex items-center gap-1.5 rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                <Trash2 size={14} />
+
+                                {deletingId === deleteTarget.id
+                                    ? "Deleting..."
+                                    : "Delete"}
+                            </button>
+
+                            <button
+                                onClick={cancelDelete}
+                                disabled={deletingId === deleteTarget.id}
+                                className="rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-600 hover:bg-zinc-50"
+                            >
+                                Cancel
+                            </button>
+
+                        </div>
+                    </div>
+                </div>
+            )}
 
         </div>
     );

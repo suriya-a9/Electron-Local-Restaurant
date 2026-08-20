@@ -5,6 +5,8 @@ import {
     X,
     Check,
     Search,
+    Pencil,
+    Trash2,
     Star,
 } from "lucide-react";
 import { useAuth } from "../../context/authContext";
@@ -32,12 +34,16 @@ const BusinessLocations = () => {
     const [locations, setLocations] = useState([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [deletingId, setDeletingId] = useState(null);
 
     const [error, setError] = useState(null);
     const [formErrors, setFormErrors] = useState({});
 
     const [showForm, setShowForm] = useState(false);
+    const [editingId, setEditingId] = useState(null);
     const [form, setForm] = useState(emptyForm);
+
+    const [deleteTarget, setDeleteTarget] = useState(null);
 
     const [search, setSearch] = useState("");
 
@@ -48,22 +54,26 @@ const BusinessLocations = () => {
         loadLocations();
     }, []);
 
+    function authHeaders() {
+        return {
+            Accept: "application/json",
+            ...(token
+                ? {
+                    Authorization: `Bearer ${token}`,
+                }
+                : {}),
+        };
+    }
+
     async function loadLocations() {
         setLoading(true);
         setError(null);
 
         try {
             const res = await fetch(
-                `${API_BASE_URL}/business-locations?per_page=1000`,
+                `${API_BASE_URL}/api/client/business-locations`,
                 {
-                    headers: {
-                        Accept: "application/json",
-                        ...(token
-                            ? {
-                                Authorization: `Bearer ${token}`,
-                            }
-                            : {}),
-                    },
+                    headers: authHeaders(),
                 }
             );
 
@@ -97,7 +107,28 @@ const BusinessLocations = () => {
     }
 
     function openCreateForm() {
+        setEditingId(null);
         setForm(emptyForm);
+        setFormErrors({});
+        setError(null);
+        setShowForm(true);
+    }
+
+    function openEditForm(location) {
+        setEditingId(location.id);
+        setForm({
+            name: location.name || "",
+            code: location.code || "",
+            gst_number: location.gst_number || "",
+            address: location.address || "",
+            city: location.city || "",
+            state: location.state || "",
+            country: location.country || "",
+            postal_code: location.postal_code || "",
+            phone: location.phone || "",
+            email: location.email || "",
+            is_primary: !!location.is_primary,
+        });
         setFormErrors({});
         setError(null);
         setShowForm(true);
@@ -107,6 +138,7 @@ const BusinessLocations = () => {
         if (saving) return;
 
         setShowForm(false);
+        setEditingId(null);
         setForm(emptyForm);
         setFormErrors({});
     }
@@ -146,28 +178,28 @@ const BusinessLocations = () => {
             is_primary: form.is_primary,
         };
 
+        const isEditing = Boolean(editingId);
+
+        const url = isEditing
+            ? `${API_BASE_URL}/api/client/business-locations/${editingId}`
+            : `${API_BASE_URL}/api/client/business-locations`;
+
         try {
-            const res = await fetch(
-                `${API_BASE_URL}/business-locations`,
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Accept: "application/json",
-                        ...(token
-                            ? {
-                                Authorization: `Bearer ${token}`,
-                            }
-                            : {}),
-                    },
-                    body: JSON.stringify(payload),
-                }
-            );
+            const res = await fetch(url, {
+                method: isEditing ? "PUT" : "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    ...authHeaders(),
+                },
+                body: JSON.stringify(payload),
+            });
 
             const json = await res.json();
 
             console.log(
-                "CREATE BUSINESS LOCATION RESPONSE:",
+                isEditing
+                    ? "UPDATE BUSINESS LOCATION RESPONSE:"
+                    : "CREATE BUSINESS LOCATION RESPONSE:",
                 json
             );
 
@@ -178,23 +210,82 @@ const BusinessLocations = () => {
 
                 throw new Error(
                     json.message ||
-                    "Failed to create business location"
+                    `Failed to ${isEditing ? "update" : "create"} business location`
                 );
             }
 
             closeForm();
-            setCurrentPage(1);
+
+            if (!isEditing) {
+                setCurrentPage(1);
+            }
 
             await loadLocations();
         } catch (err) {
             console.error(
-                "Create business location error:",
+                isEditing
+                    ? "Update business location error:"
+                    : "Create business location error:",
                 err
             );
 
             setError(err.message);
         } finally {
             setSaving(false);
+        }
+    }
+
+    function requestDelete(location) {
+        setError(null);
+        setDeleteTarget(location);
+    }
+
+    function cancelDelete() {
+        if (deletingId) return;
+        setDeleteTarget(null);
+    }
+
+    async function confirmDelete() {
+        if (!deleteTarget) return;
+
+        setDeletingId(deleteTarget.id);
+        setError(null);
+
+        try {
+            const res = await fetch(
+                `${API_BASE_URL}/api/client/business-locations/${deleteTarget.id}`,
+                {
+                    method: "DELETE",
+                    headers: authHeaders(),
+                }
+            );
+
+            const json = await res.json();
+
+            console.log("DELETE BUSINESS LOCATION RESPONSE:", json);
+
+            if (!res.ok || !json.success) {
+                throw new Error(
+                    json.message || "Failed to delete business location"
+                );
+            }
+
+            setDeleteTarget(null);
+
+            const remainingOnPage =
+                paginatedLocations.length === 1 && currentPage > 1;
+
+            if (remainingOnPage) {
+                setCurrentPage((prev) => prev - 1);
+            }
+
+            await loadLocations();
+        } catch (err) {
+            console.error("Delete business location error:", err);
+
+            setError(err.message);
+        } finally {
+            setDeletingId(null);
         }
     }
 
@@ -251,6 +342,8 @@ const BusinessLocations = () => {
             }`;
     }
 
+    const isEditing = Boolean(editingId);
+
     return (
         <div className="min-h-screen bg-white text-zinc-800 antialiased p-6 md:p-8 lg:p-12">
 
@@ -294,11 +387,15 @@ const BusinessLocations = () => {
                     <div className="mb-6 flex items-center justify-between">
                         <div>
                             <h2 className="text-sm font-bold text-zinc-900">
-                                New Business Location
+                                {isEditing
+                                    ? "Edit Business Location"
+                                    : "New Business Location"}
                             </h2>
 
                             <p className="mt-1 text-xs text-zinc-400">
-                                Add a new branch or business location.
+                                {isEditing
+                                    ? "Update the details for this location."
+                                    : "Add a new branch or business location."}
                             </p>
                         </div>
 
@@ -557,8 +654,12 @@ const BusinessLocations = () => {
                             <Check size={14} />
 
                             {saving
-                                ? "Creating..."
-                                : "Create Location"}
+                                ? isEditing
+                                    ? "Saving..."
+                                    : "Creating..."
+                                : isEditing
+                                    ? "Save Changes"
+                                    : "Create Location"}
                         </button>
 
                         <button
@@ -638,6 +739,16 @@ const BusinessLocations = () => {
                                                     "Unnamed Location"}
                                             </h3>
 
+                                            {location.is_primary && (
+                                                <span className="flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-600">
+                                                    <Star
+                                                        size={11}
+                                                        fill="currentColor"
+                                                    />
+                                                    Primary
+                                                </span>
+                                            )}
+
                                         </div>
 
                                         <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-400">
@@ -685,6 +796,26 @@ const BusinessLocations = () => {
 
                                     </div>
                                 </div>
+
+                                <div className="flex shrink-0 items-center gap-2 lg:pl-4">
+
+                                    <button
+                                        onClick={() => openEditForm(location)}
+                                        className="flex items-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-2 text-xs font-semibold text-zinc-600 transition-colors hover:border-[#40295C]/30 hover:text-[#40295C]"
+                                    >
+                                        <Pencil size={13} />
+                                        Edit
+                                    </button>
+
+                                    <button
+                                        onClick={() => requestDelete(location)}
+                                        className="flex items-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-2 text-xs font-semibold text-zinc-600 transition-colors hover:border-rose-300 hover:text-rose-600"
+                                    >
+                                        <Trash2 size={13} />
+                                        Delete
+                                    </button>
+
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -702,6 +833,50 @@ const BusinessLocations = () => {
                         />
                     </div>
                 )}
+
+            {deleteTarget && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/40 p-4">
+
+                    <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+
+                        <h3 className="text-sm font-bold text-zinc-900">
+                            Delete this location?
+                        </h3>
+
+                        <p className="mt-2 text-sm text-zinc-500">
+                            <span className="font-semibold text-zinc-700">
+                                {deleteTarget.name}
+                            </span>{" "}
+                            will be permanently removed. This can't be undone.
+                        </p>
+
+                        <div className="mt-6 flex gap-3">
+
+                            <button
+                                onClick={confirmDelete}
+                                disabled={deletingId === deleteTarget.id}
+                                className="flex items-center gap-1.5 rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                <Trash2 size={14} />
+
+                                {deletingId === deleteTarget.id
+                                    ? "Deleting..."
+                                    : "Delete"}
+                            </button>
+
+                            <button
+                                onClick={cancelDelete}
+                                disabled={deletingId === deleteTarget.id}
+                                className="rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-600 hover:bg-zinc-50"
+                            >
+                                Cancel
+                            </button>
+
+                        </div>
+                    </div>
+                </div>
+            )}
+
         </div>
     );
 };

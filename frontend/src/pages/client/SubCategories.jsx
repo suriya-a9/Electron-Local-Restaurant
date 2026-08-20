@@ -5,6 +5,8 @@ import {
     X,
     Check,
     Search,
+    Pencil,
+    Trash2,
 } from "lucide-react";
 import { useAuth } from "../../context/authContext";
 import Pagination from "../../components/Pagination";
@@ -24,13 +26,17 @@ const SubCategories = () => {
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [deletingId, setDeletingId] = useState(null);
 
     const [error, setError] = useState(null);
     const [formErrors, setFormErrors] = useState({});
 
     const [showForm, setShowForm] = useState(false);
+    const [editingId, setEditingId] = useState(null);
 
     const [form, setForm] = useState(emptyForm);
+
+    const [deleteTarget, setDeleteTarget] = useState(null);
 
     const [search, setSearch] = useState("");
 
@@ -42,22 +48,26 @@ const SubCategories = () => {
         loadCategories();
     }, []);
 
+    function authHeaders() {
+        return {
+            Accept: "application/json",
+            ...(token
+                ? {
+                    Authorization: `Bearer ${token}`,
+                }
+                : {}),
+        };
+    }
+
     async function loadSubCategories() {
         setLoading(true);
         setError(null);
 
         try {
             const res = await fetch(
-                `${API_BASE_URL}/sub-categories?per_page=1000`,
+                `${API_BASE_URL}/api/client/sub-categories`,
                 {
-                    headers: {
-                        Accept: "application/json",
-                        ...(token
-                            ? {
-                                Authorization: `Bearer ${token}`,
-                            }
-                            : {}),
-                    },
+                    headers: authHeaders(),
                 }
             );
 
@@ -94,16 +104,9 @@ const SubCategories = () => {
     async function loadCategories() {
         try {
             const res = await fetch(
-                `${API_BASE_URL}/categories?per_page=1000`,
+                `${API_BASE_URL}/api/client/categories?per_page=1000`,
                 {
-                    headers: {
-                        Accept: "application/json",
-                        ...(token
-                            ? {
-                                Authorization: `Bearer ${token}`,
-                            }
-                            : {}),
-                    },
+                    headers: authHeaders(),
                 }
             );
 
@@ -135,7 +138,22 @@ const SubCategories = () => {
     }
 
     function openCreateForm() {
+        setEditingId(null);
         setForm(emptyForm);
+        setFormErrors({});
+        setError(null);
+        setShowForm(true);
+    }
+
+    function openEditForm(subCategory) {
+        setEditingId(subCategory.id);
+        setForm({
+            category_id:
+                subCategory.category?.id ??
+                subCategory.category_id ??
+                "",
+            name: subCategory.name || "",
+        });
         setFormErrors({});
         setError(null);
         setShowForm(true);
@@ -145,6 +163,7 @@ const SubCategories = () => {
         if (saving) return;
 
         setShowForm(false);
+        setEditingId(null);
         setForm(emptyForm);
         setFormErrors({});
     }
@@ -171,31 +190,34 @@ const SubCategories = () => {
         setFormErrors({});
 
         const payload = {
-            category_id: Number(form.category_id),
+            category_id: form.category_id,
             name: form.name.trim(),
         };
 
+        const isEditing = Boolean(editingId);
+
+        const url = isEditing
+            ? `${API_BASE_URL}/api/client/sub-categories/${editingId}`
+            : `${API_BASE_URL}/api/client/sub-categories`;
+
         try {
-            const res = await fetch(
-                `${API_BASE_URL}/sub-categories`,
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Accept: "application/json",
-                        ...(token
-                            ? {
-                                Authorization: `Bearer ${token}`,
-                            }
-                            : {}),
-                    },
-                    body: JSON.stringify(payload),
-                }
-            );
+            const res = await fetch(url, {
+                method: isEditing ? "PUT" : "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    ...authHeaders(),
+                },
+                body: JSON.stringify(payload),
+            });
 
             const json = await res.json();
 
-            console.log("CREATE SUB CATEGORY RESPONSE:", json);
+            console.log(
+                isEditing
+                    ? "UPDATE SUB CATEGORY RESPONSE:"
+                    : "CREATE SUB CATEGORY RESPONSE:",
+                json
+            );
 
             if (!res.ok || !json.success) {
                 if (json.errors) {
@@ -203,22 +225,85 @@ const SubCategories = () => {
                 }
 
                 throw new Error(
-                    json.message || "Failed to create sub category"
+                    json.message ||
+                    `Failed to ${isEditing ? "update" : "create"} sub category`
                 );
             }
 
             closeForm();
 
-            setCurrentPage(1);
+            if (!isEditing) {
+                setCurrentPage(1);
+            }
 
             await loadSubCategories();
 
         } catch (err) {
-            console.error("Save sub category error:", err);
+            console.error(
+                isEditing
+                    ? "Update sub category error:"
+                    : "Save sub category error:",
+                err
+            );
 
             setError(err.message);
         } finally {
             setSaving(false);
+        }
+    }
+
+    function requestDelete(subCategory) {
+        setError(null);
+        setDeleteTarget(subCategory);
+    }
+
+    function cancelDelete() {
+        if (deletingId) return;
+        setDeleteTarget(null);
+    }
+
+    async function confirmDelete() {
+        if (!deleteTarget) return;
+
+        setDeletingId(deleteTarget.id);
+        setError(null);
+
+        try {
+            const res = await fetch(
+                `${API_BASE_URL}/api/client/sub-categories/${deleteTarget.id}`,
+                {
+                    method: "DELETE",
+                    headers: authHeaders(),
+                }
+            );
+
+            const json = await res.json();
+
+            console.log("DELETE SUB CATEGORY RESPONSE:", json);
+
+            if (!res.ok || !json.success) {
+                throw new Error(
+                    json.message || "Failed to delete sub category"
+                );
+            }
+
+            setDeleteTarget(null);
+
+            const remainingOnPage =
+                paginatedSubCategories.length === 1 && currentPage > 1;
+
+            if (remainingOnPage) {
+                setCurrentPage((prev) => prev - 1);
+            }
+
+            await loadSubCategories();
+
+        } catch (err) {
+            console.error("Delete sub category error:", err);
+
+            setError(err.message);
+        } finally {
+            setDeletingId(null);
         }
     }
 
@@ -229,8 +314,8 @@ const SubCategories = () => {
 
         const category = categories.find(
             (item) =>
-                Number(item.id) ===
-                Number(subCategory.category_id)
+                String(item.id) ===
+                String(subCategory.category_id)
         );
 
         return category?.name || "—";
@@ -282,6 +367,8 @@ const SubCategories = () => {
         setCurrentPage(page);
     }
 
+    const isEditing = Boolean(editingId);
+
     return (
         <div className="min-h-screen bg-white text-zinc-800 antialiased p-6 md:p-8 lg:p-12">
 
@@ -329,11 +416,15 @@ const SubCategories = () => {
 
                         <div>
                             <h2 className="text-sm font-bold text-zinc-900">
-                                New Sub Category
+                                {isEditing
+                                    ? "Edit Sub Category"
+                                    : "New Sub Category"}
                             </h2>
 
                             <p className="mt-1 text-xs text-zinc-400">
-                                Create a new sub category under a category.
+                                {isEditing
+                                    ? "Update this sub category's details."
+                                    : "Create a new sub category under a category."}
                             </p>
                         </div>
 
@@ -416,8 +507,12 @@ const SubCategories = () => {
                             <Check size={14} />
 
                             {saving
-                                ? "Creating..."
-                                : "Create Sub Category"}
+                                ? isEditing
+                                    ? "Saving..."
+                                    : "Creating..."
+                                : isEditing
+                                    ? "Save Changes"
+                                    : "Create Sub Category"}
                         </button>
 
                         <button
@@ -520,6 +615,26 @@ const SubCategories = () => {
 
                                 </div>
 
+                                <div className="flex shrink-0 items-center gap-2 lg:pl-4">
+
+                                    <button
+                                        onClick={() => openEditForm(subCategory)}
+                                        className="flex items-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-2 text-xs font-semibold text-zinc-600 transition-colors hover:border-[#40295C]/30 hover:text-[#40295C]"
+                                    >
+                                        <Pencil size={13} />
+                                        Edit
+                                    </button>
+
+                                    <button
+                                        onClick={() => requestDelete(subCategory)}
+                                        className="flex items-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-2 text-xs font-semibold text-zinc-600 transition-colors hover:border-rose-300 hover:text-rose-600"
+                                    >
+                                        <Trash2 size={13} />
+                                        Delete
+                                    </button>
+
+                                </div>
+
                             </div>
                         ))}
 
@@ -539,6 +654,49 @@ const SubCategories = () => {
                         />
                     </div>
                 )}
+
+            {deleteTarget && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/40 p-4">
+
+                    <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+
+                        <h3 className="text-sm font-bold text-zinc-900">
+                            Delete this sub category?
+                        </h3>
+
+                        <p className="mt-2 text-sm text-zinc-500">
+                            <span className="font-semibold text-zinc-700">
+                                {deleteTarget.name}
+                            </span>{" "}
+                            will be permanently removed. This can't be undone.
+                        </p>
+
+                        <div className="mt-6 flex gap-3">
+
+                            <button
+                                onClick={confirmDelete}
+                                disabled={deletingId === deleteTarget.id}
+                                className="flex items-center gap-1.5 rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                <Trash2 size={14} />
+
+                                {deletingId === deleteTarget.id
+                                    ? "Deleting..."
+                                    : "Delete"}
+                            </button>
+
+                            <button
+                                onClick={cancelDelete}
+                                disabled={deletingId === deleteTarget.id}
+                                className="rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-600 hover:bg-zinc-50"
+                            >
+                                Cancel
+                            </button>
+
+                        </div>
+                    </div>
+                </div>
+            )}
 
         </div>
     );

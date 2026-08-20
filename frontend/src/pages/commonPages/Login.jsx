@@ -48,8 +48,12 @@ export default function Login({ portal = "client", endpoint = "/clientAuth/login
 
             if (data?.success) {
                 const authToken = data.token || data.data?.token;
-                const user = data.user || data.data?.user || data.admin;
+                const user = data.user || data.data?.user || data.data?.client || data.admin;
                 const subscription = data.subscription || data.data?.subscription || null;
+
+                if (!authToken || !user) {
+                    throw new Error("Invalid login response");
+                }
 
                 login(authToken, user, subscription, portal);
 

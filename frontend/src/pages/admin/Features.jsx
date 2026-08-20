@@ -4,6 +4,7 @@ import {
     Plus,
     Trash2,
     Pencil,
+    Eye,
     X,
     Check,
 } from "lucide-react";
@@ -13,7 +14,6 @@ import Pagination from "../../components/Pagination";
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const emptyForm = {
-    key: "",
     name: "",
 };
 
@@ -29,6 +29,8 @@ const AdminFeatures = () => {
     const [form, setForm] = useState(emptyForm);
     const [saving, setSaving] = useState(false);
 
+    const [viewingFeature, setViewingFeature] = useState(null);
+
     useEffect(() => {
         loadFeatures();
     }, []);
@@ -38,7 +40,7 @@ const AdminFeatures = () => {
         setError(null);
 
         try {
-            const res = await fetch(`${API_BASE_URL}/features`, {
+            const res = await fetch(`${API_BASE_URL}/api/admin-features`, {
                 headers: token
                     ? {
                         Authorization: `Bearer ${token}`,
@@ -75,7 +77,6 @@ const AdminFeatures = () => {
         setEditingId(feature.id);
 
         setForm({
-            key: feature.key || "",
             name: feature.name || "",
         });
 
@@ -89,6 +90,14 @@ const AdminFeatures = () => {
         setForm(emptyForm);
     }
 
+    function openViewModal(feature) {
+        setViewingFeature(feature);
+    }
+
+    function closeViewModal() {
+        setViewingFeature(null);
+    }
+
     async function handleSubmit(e) {
         e.preventDefault();
 
@@ -96,16 +105,15 @@ const AdminFeatures = () => {
         setError(null);
 
         const payload = {
-            key: form.key.trim(),
             name: form.name.trim(),
         };
 
         try {
             const url = editingId
-                ? `${API_BASE_URL}/features/${editingId}`
-                : `${API_BASE_URL}/features`;
+                ? `${API_BASE_URL}/api/admin-features/${editingId}`
+                : `${API_BASE_URL}/api/admin-features`;
 
-            const method = editingId ? "PATCH" : "POST";
+            const method = editingId ? "PUT" : "POST";
 
             const res = await fetch(url, {
                 method,
@@ -150,7 +158,7 @@ const AdminFeatures = () => {
 
         try {
             const res = await fetch(
-                `${API_BASE_URL}/features/${feature.id}`,
+                `${API_BASE_URL}/api/admin-features/${feature.id}`,
                 {
                     method: "DELETE",
                     headers: token
@@ -246,51 +254,24 @@ const AdminFeatures = () => {
                         </button>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                        <label className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                            Feature Name
+                        </label>
 
-                        <div>
-                            <label className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
-                                Feature Key
-                            </label>
-
-                            <input
-                                type="text"
-                                required
-                                value={form.key}
-                                onChange={(e) =>
-                                    setForm((prev) => ({
-                                        ...prev,
-                                        key: e.target.value,
-                                    }))
-                                }
-                                placeholder="e.g. employee_management"
-                                className="mt-1.5 w-full rounded-xl border border-zinc-200/80 bg-white px-3.5 py-2.5 text-sm font-medium text-zinc-900 outline-none focus:border-[#40295C]"
-                            />
-
-                            <p className="mt-1.5 text-xs text-zinc-400">
-                                Use a unique key such as employee_management.
-                            </p>
-                        </div>
-
-                        <div>
-                            <label className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
-                                Feature Name
-                            </label>
-
-                            <input
-                                type="text"
-                                required
-                                value={form.name}
-                                onChange={(e) =>
-                                    setForm((prev) => ({
-                                        ...prev,
-                                        name: e.target.value,
-                                    }))
-                                }
-                                placeholder="e.g. Employee Management"
-                                className="mt-1.5 w-full rounded-xl border border-zinc-200/80 bg-white px-3.5 py-2.5 text-sm font-medium text-zinc-900 outline-none focus:border-[#40295C]"
-                            />
-                        </div>
+                        <input
+                            type="text"
+                            required
+                            value={form.name}
+                            onChange={(e) =>
+                                setForm((prev) => ({
+                                    ...prev,
+                                    name: e.target.value,
+                                }))
+                            }
+                            placeholder="e.g. Employee Management"
+                            className="mt-1.5 w-full rounded-xl border border-zinc-200/80 bg-white px-3.5 py-2.5 text-sm font-medium text-zinc-900 outline-none focus:border-[#40295C]"
+                        />
                     </div>
 
                     <button
@@ -348,16 +329,20 @@ const AdminFeatures = () => {
                                         <h3 className="text-sm font-semibold text-zinc-950">
                                             {feature.name}
                                         </h3>
-
-                                        <div className="mt-1 text-xs text-zinc-500">
-                                            <span className="rounded-md bg-zinc-100 px-2 py-1 font-mono">
-                                                {feature.key}
-                                            </span>
-                                        </div>
                                     </div>
                                 </div>
 
-                                {/* <div className="flex items-center gap-2 md:justify-end">
+                                <div className="flex items-center gap-2 md:justify-end">
+
+                                    <button
+                                        onClick={() =>
+                                            openViewModal(feature)
+                                        }
+                                        className="flex items-center gap-1.5 rounded-xl border border-zinc-200/80 bg-white px-3 py-2 text-xs font-semibold text-zinc-700 transition-all hover:border-zinc-300 hover:text-zinc-950"
+                                    >
+                                        <Eye size={12} />
+                                        View
+                                    </button>
 
                                     <button
                                         onClick={() =>
@@ -378,7 +363,7 @@ const AdminFeatures = () => {
                                         <Trash2 size={12} />
                                         Delete
                                     </button>
-                                </div> */}
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -389,6 +374,72 @@ const AdminFeatures = () => {
                     onPageChange={setCurrentPage}
                 />
             </div>
+
+            {viewingFeature && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+                    <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-sm font-bold text-zinc-900">
+                                Feature Details
+                            </h2>
+
+                            <button
+                                type="button"
+                                onClick={closeViewModal}
+                                className="text-zinc-400 hover:text-zinc-700"
+                            >
+                                <X size={16} />
+                            </button>
+                        </div>
+
+                        <div className="mt-4 space-y-3 text-sm">
+                            <div>
+                                <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                                    ID
+                                </span>
+                                <p className="mt-1 break-all font-mono text-zinc-800">
+                                    {viewingFeature.id}
+                                </p>
+                            </div>
+
+                            <div>
+                                <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                                    Name
+                                </span>
+                                <p className="mt-1 text-zinc-800">
+                                    {viewingFeature.name}
+                                </p>
+                            </div>
+
+                            {viewingFeature.created_at && (
+                                <div>
+                                    <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                                        Created At
+                                    </span>
+                                    <p className="mt-1 text-zinc-800">
+                                        {new Date(
+                                            viewingFeature.created_at
+                                        ).toLocaleString()}
+                                    </p>
+                                </div>
+                            )}
+
+                            {viewingFeature.updated_at && (
+                                <div>
+                                    <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                                        Updated At
+                                    </span>
+                                    <p className="mt-1 text-zinc-800">
+                                        {new Date(
+                                            viewingFeature.updated_at
+                                        ).toLocaleString()}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

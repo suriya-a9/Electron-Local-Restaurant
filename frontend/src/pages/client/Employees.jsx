@@ -6,6 +6,7 @@ import {
     Check,
     Search,
     Pencil,
+    Trash2,
 } from "lucide-react";
 import { useAuth } from "../../context/authContext";
 import Pagination from "../../components/Pagination";
@@ -33,6 +34,7 @@ const Employees = () => {
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [deletingId, setDeletingId] = useState(null);
 
     const [error, setError] = useState(null);
     const [formErrors, setFormErrors] = useState({});
@@ -41,6 +43,8 @@ const Employees = () => {
     const [editingId, setEditingId] = useState(null);
 
     const [form, setForm] = useState(emptyForm);
+
+    const [deleteTarget, setDeleteTarget] = useState(null);
 
     const [search, setSearch] = useState("");
 
@@ -53,22 +57,26 @@ const Employees = () => {
         loadLocations();
     }, []);
 
+    function authHeaders() {
+        return {
+            Accept: "application/json",
+            ...(token
+                ? {
+                    Authorization: `Bearer ${token}`,
+                }
+                : {}),
+        };
+    }
+
     async function loadEmployees() {
         setLoading(true);
         setError(null);
 
         try {
             const res = await fetch(
-                `${API_BASE_URL}/employees?per_page=1000`,
+                `${API_BASE_URL}/api/client/employees`,
                 {
-                    headers: {
-                        Accept: "application/json",
-                        ...(token
-                            ? {
-                                Authorization: `Bearer ${token}`,
-                            }
-                            : {}),
-                    },
+                    headers: authHeaders(),
                 }
             );
 
@@ -105,16 +113,9 @@ const Employees = () => {
     async function loadRoles() {
         try {
             const res = await fetch(
-                `${API_BASE_URL}/roles`,
+                `${API_BASE_URL}/api/client/roles`,
                 {
-                    headers: {
-                        Accept: "application/json",
-                        ...(token
-                            ? {
-                                Authorization: `Bearer ${token}`,
-                            }
-                            : {}),
-                    },
+                    headers: authHeaders(),
                 }
             );
 
@@ -144,16 +145,9 @@ const Employees = () => {
     async function loadLocations() {
         try {
             const res = await fetch(
-                `${API_BASE_URL}/business-locations?per_page=1000`,
+                `${API_BASE_URL}/api/client/business-locations?per_page=1000`,
                 {
-                    headers: {
-                        Accept: "application/json",
-                        ...(token
-                            ? {
-                                Authorization: `Bearer ${token}`,
-                            }
-                            : {}),
-                    },
+                    headers: authHeaders(),
                 }
             );
 
@@ -206,16 +200,9 @@ const Employees = () => {
 
         try {
             const res = await fetch(
-                `${API_BASE_URL}/employees/${employee.id}`,
+                `${API_BASE_URL}/api/client/employees/${employee.id}`,
                 {
-                    headers: {
-                        Accept: "application/json",
-                        ...(token
-                            ? {
-                                Authorization: `Bearer ${token}`,
-                            }
-                            : {}),
-                    },
+                    headers: authHeaders(),
                 }
             );
 
@@ -243,8 +230,8 @@ const Employees = () => {
                 password: "",
                 phone: employeeData?.phone || "",
                 business_location_id:
-                    employeeData?.business_location_id ||
                     employeeData?.business_location?.id ||
+                    employeeData?.business_location_id ||
                     "",
                 designation:
                     employeeData?.designation || "",
@@ -258,9 +245,10 @@ const Employees = () => {
                 salary:
                     employeeData?.salary ?? "",
                 role:
-                    Array.isArray(employeeData?.roles)
+                    employeeData?.role?.name ||
+                    (Array.isArray(employeeData?.roles)
                         ? employeeData.roles[0]?.name || ""
-                        : employeeData?.role || "",
+                        : employeeData?.role || ""),
             });
 
         } catch (err) {
@@ -310,22 +298,23 @@ const Employees = () => {
             name: form.name.trim(),
             email: form.email.trim(),
             phone: form.phone.trim(),
-            business_location_id:
-                Number(form.business_location_id),
+            business_location_id: form.business_location_id,
             designation: form.designation.trim(),
             date_of_joining: form.date_of_joining,
-            salary: Number(form.salary),
+            salary: form.salary === "" ? "" : Number(form.salary),
             role: form.role,
         };
 
         if (!editingId) {
             payload.password = form.password;
+        } else if (form.password) {
+            payload.password = form.password;
         }
 
         try {
             const url = editingId
-                ? `${API_BASE_URL}/employees/${editingId}`
-                : `${API_BASE_URL}/employees`;
+                ? `${API_BASE_URL}/api/client/employees/${editingId}`
+                : `${API_BASE_URL}/api/client/employees`;
 
             const method = editingId
                 ? "PUT"
@@ -335,12 +324,7 @@ const Employees = () => {
                 method,
                 headers: {
                     "Content-Type": "application/json",
-                    Accept: "application/json",
-                    ...(token
-                        ? {
-                            Authorization: `Bearer ${token}`,
-                        }
-                        : {}),
+                    ...authHeaders(),
                 },
                 body: JSON.stringify(payload),
             });
@@ -371,7 +355,9 @@ const Employees = () => {
 
             closeForm();
 
-            setCurrentPage(1);
+            if (!editingId) {
+                setCurrentPage(1);
+            }
 
             await loadEmployees();
 
@@ -385,6 +371,97 @@ const Employees = () => {
         } finally {
             setSaving(false);
         }
+    }
+
+    function requestDelete(employee) {
+        setError(null);
+        setDeleteTarget(employee);
+    }
+
+    function cancelDelete() {
+        if (deletingId) return;
+        setDeleteTarget(null);
+    }
+
+    async function confirmDelete() {
+        if (!deleteTarget) return;
+
+        setDeletingId(deleteTarget.id);
+        setError(null);
+
+        try {
+            const res = await fetch(
+                `${API_BASE_URL}/api/client/employees/${deleteTarget.id}`,
+                {
+                    method: "DELETE",
+                    headers: authHeaders(),
+                }
+            );
+
+            const json = await res.json();
+
+            console.log("DELETE EMPLOYEE RESPONSE:", json);
+
+            if (!res.ok || !json.success) {
+                throw new Error(
+                    json.message || "Failed to delete employee"
+                );
+            }
+
+            setDeleteTarget(null);
+
+            const remainingOnPage =
+                paginatedEmployees.length === 1 && currentPage > 1;
+
+            if (remainingOnPage) {
+                setCurrentPage((prev) => prev - 1);
+            }
+
+            await loadEmployees();
+
+        } catch (err) {
+            console.error("Delete employee error:", err);
+
+            setError(err.message);
+        } finally {
+            setDeletingId(null);
+        }
+    }
+
+    function getRoleName(employee) {
+        if (Array.isArray(employee.roles) && employee.roles.length > 0) {
+            return employee.roles
+                .map((role) => role.name)
+                .join(", ");
+        }
+
+        if (employee.role?.name) {
+            return employee.role.name;
+        }
+
+        if (typeof employee.role === "string") {
+            return employee.role;
+        }
+
+        return employee.role_name || "—";
+    }
+
+    function getLocationName(employee) {
+        if (employee.business_location?.name) {
+            return employee.business_location.name;
+        }
+
+        if (employee.businessLocation?.name) {
+            return employee.businessLocation.name;
+        }
+
+        const location = locations.find(
+            (item) =>
+                String(item.id) ===
+                String(employee.business_location_id)
+        );
+
+        return location?.name || "—";
     }
 
     const filteredEmployees = Array.isArray(employees)
@@ -436,42 +513,6 @@ const Employees = () => {
             ? "border-rose-400"
             : "border-zinc-200/80"
             }`;
-    }
-
-    function getRoleName(employee) {
-        if (Array.isArray(employee.roles) && employee.roles.length > 0) {
-            return employee.roles
-                .map((role) => role.name)
-                .join(", ");
-        }
-
-        if (typeof employee.role === "string") {
-            return employee.role;
-        }
-
-        if (employee.role?.name) {
-            return employee.role.name;
-        }
-
-        return employee.role_name || "—";
-    }
-
-    function getLocationName(employee) {
-        if (employee.business_location?.name) {
-            return employee.business_location.name;
-        }
-
-        if (employee.businessLocation?.name) {
-            return employee.businessLocation.name;
-        }
-
-        const location = locations.find(
-            (item) =>
-                Number(item.id) ===
-                Number(employee.business_location_id)
-        );
-
-        return location?.name || "—";
     }
 
     function handlePageChange(page) {
@@ -615,29 +656,32 @@ const Employees = () => {
                             )}
                         </div>
 
-                        {!editingId && (
-                            <div>
-                                <label className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
-                                    Password
-                                </label>
-
-                                <input
-                                    type="password"
-                                    name="password"
-                                    required={!editingId}
-                                    value={form.password}
-                                    onChange={handleChange}
-                                    placeholder="password123"
-                                    className={inputClass("password")}
-                                />
-
-                                {getFormError("password") && (
-                                    <p className="mt-1 text-xs text-rose-500">
-                                        {getFormError("password")}
-                                    </p>
+                        <div>
+                            <label className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                                Password
+                                {editingId && (
+                                    <span className="ml-1 normal-case text-zinc-400">
+                                        (leave blank to keep current)
+                                    </span>
                                 )}
-                            </div>
-                        )}
+                            </label>
+
+                            <input
+                                type="password"
+                                name="password"
+                                required={!editingId}
+                                value={form.password}
+                                onChange={handleChange}
+                                placeholder="password123"
+                                className={inputClass("password")}
+                            />
+
+                            {getFormError("password") && (
+                                <p className="mt-1 text-xs text-rose-500">
+                                    {getFormError("password")}
+                                </p>
+                            )}
+                        </div>
 
                         <div>
                             <label className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
@@ -918,6 +962,16 @@ const Employees = () => {
                                         Edit
                                     </button>
 
+                                    <button
+                                        type="button"
+                                        onClick={() => requestDelete(employee)}
+                                        className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2 text-xs font-semibold text-zinc-700 transition-colors hover:border-rose-300 hover:text-rose-600"
+                                    >
+                                        <Trash2 size={14} />
+
+                                        Delete
+                                    </button>
+
                                 </div>
 
                             </div>
@@ -939,6 +993,49 @@ const Employees = () => {
                         />
                     </div>
                 )}
+
+            {deleteTarget && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/40 p-4">
+
+                    <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+
+                        <h3 className="text-sm font-bold text-zinc-900">
+                            Delete this employee?
+                        </h3>
+
+                        <p className="mt-2 text-sm text-zinc-500">
+                            <span className="font-semibold text-zinc-700">
+                                {deleteTarget.name}
+                            </span>{" "}
+                            will be permanently removed. This can't be undone.
+                        </p>
+
+                        <div className="mt-6 flex gap-3">
+
+                            <button
+                                onClick={confirmDelete}
+                                disabled={deletingId === deleteTarget.id}
+                                className="flex items-center gap-1.5 rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                <Trash2 size={14} />
+
+                                {deletingId === deleteTarget.id
+                                    ? "Deleting..."
+                                    : "Delete"}
+                            </button>
+
+                            <button
+                                onClick={cancelDelete}
+                                disabled={deletingId === deleteTarget.id}
+                                className="rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-600 hover:bg-zinc-50"
+                            >
+                                Cancel
+                            </button>
+
+                        </div>
+                    </div>
+                </div>
+            )}
 
         </div>
     );

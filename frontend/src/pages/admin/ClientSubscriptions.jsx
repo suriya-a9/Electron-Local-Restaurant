@@ -10,6 +10,7 @@ import {
     Clock,
     XCircle,
     Plus,
+    RotateCcw,
 } from "lucide-react";
 import { useAuth } from "../../context/authContext";
 
@@ -29,6 +30,7 @@ const ClientSubscriptions = () => {
     const [loadingClients, setLoadingClients] = useState(true);
     const [loadingSubscription, setLoadingSubscription] = useState(false);
     const [assigning, setAssigning] = useState(false);
+    const [renewingId, setRenewingId] = useState(null);
 
     const [error, setError] = useState(null);
 
@@ -51,7 +53,7 @@ const ClientSubscriptions = () => {
         setError(null);
 
         try {
-            const res = await fetch(`${API_BASE_URL}/clients`, {
+            const res = await fetch(`${API_BASE_URL}/api/clients`, {
                 headers: {
                     Accept: "application/json",
                     ...(token
@@ -90,7 +92,7 @@ const ClientSubscriptions = () => {
     async function loadPlans() {
         try {
             const res = await fetch(
-                `${API_BASE_URL}/subscription-plans`,
+                `${API_BASE_URL}/api/subscription-plans`,
                 {
                     headers: {
                         Accept: "application/json",
@@ -150,14 +152,14 @@ const ClientSubscriptions = () => {
 
             const [currentRes, historyRes] = await Promise.all([
                 fetch(
-                    `${API_BASE_URL}/clients/${clientId}/current-subscription`,
+                    `${API_BASE_URL}/api/clients/${clientId}/current-subscription`,
                     {
                         headers,
                     }
                 ),
 
                 fetch(
-                    `${API_BASE_URL}/clients/${clientId}/subscription-history`,
+                    `${API_BASE_URL}/api/clients/${clientId}/subscription-history`,
                     {
                         headers,
                     }
@@ -217,7 +219,7 @@ const ClientSubscriptions = () => {
 
         try {
             const res = await fetch(
-                `${API_BASE_URL}/clients/${selectedClient.id}/assign-plan`,
+                `${API_BASE_URL}/api/clients/${selectedClient.id}/assign-plan`,
                 {
                     method: "POST",
                     headers: {
@@ -231,9 +233,7 @@ const ClientSubscriptions = () => {
                     },
                     body: JSON.stringify({
                         subscription_plan_id:
-                            Number(
-                                assignForm.subscription_plan_id
-                            ),
+                            assignForm.subscription_plan_id,
 
                         billing_cycle:
                             assignForm.billing_cycle,
@@ -267,6 +267,62 @@ const ClientSubscriptions = () => {
             setError(err.message);
         } finally {
             setAssigning(false);
+        }
+    }
+
+    async function renewPlan(subscription) {
+        if (!selectedClient) return;
+
+        const planId =
+            subscription.subscription_plan_id ||
+            subscription.subscription_plan?.id ||
+            subscription.plan?.id;
+
+        const billingCycle = subscription.billing_cycle || "monthly";
+
+        if (!planId) {
+            setError("Could not determine which plan to renew.");
+            return;
+        }
+
+        setRenewingId(subscription.id);
+        setError(null);
+
+        try {
+            const res = await fetch(
+                `${API_BASE_URL}/api/clients/${selectedClient.id}/assign-plan`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Accept: "application/json",
+                        ...(token
+                            ? {
+                                Authorization: `Bearer ${token}`,
+                            }
+                            : {}),
+                    },
+                    body: JSON.stringify({
+                        subscription_plan_id: planId,
+                        billing_cycle: billingCycle,
+                    }),
+                }
+            );
+
+            const json = await res.json();
+
+            if (!res.ok || !json.success) {
+                throw new Error(
+                    json.message || "Failed to renew subscription plan"
+                );
+            }
+
+            await loadClientSubscriptions(selectedClient.id);
+        } catch (err) {
+            console.error(err);
+            setError(err.message);
+        } finally {
+            setRenewingId(null);
         }
     }
 
@@ -671,6 +727,35 @@ const ClientSubscriptions = () => {
                                                     client.
                                                 </p>
 
+                                                {subscriptionHistory.length > 0 && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            renewPlan(
+                                                                subscriptionHistory[0]
+                                                            )
+                                                        }
+                                                        disabled={
+                                                            renewingId ===
+                                                            subscriptionHistory[0]
+                                                                .id
+                                                        }
+                                                        className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-[#40295C] px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-[#321f49] disabled:opacity-50"
+                                                    >
+                                                        <RotateCcw size={13} />
+
+                                                        {renewingId ===
+                                                            subscriptionHistory[0]
+                                                                .id
+                                                            ? "Renewing..."
+                                                            : `Renew "${subscriptionHistory[0].plan_name ||
+                                                            subscriptionHistory[0]
+                                                                .name ||
+                                                            "Same Plan"
+                                                            }"`}
+                                                    </button>
+                                                )}
+
                                             </div>
                                         ) : (
                                             <div className="rounded-2xl border border-zinc-200/60 bg-white p-6 shadow-sm">
@@ -681,7 +766,8 @@ const ClientSubscriptions = () => {
                                                         <div className="flex flex-wrap items-center gap-2">
 
                                                             <h4 className="text-lg font-bold text-zinc-950">
-                                                                {currentSubscription.subscription_plan?.name ||
+                                                                {currentSubscription.plan_name ||
+                                                                    currentSubscription.subscription_plan?.name ||
                                                                     currentSubscription.plan?.name ||
                                                                     currentSubscription.name ||
                                                                     "Subscription"}
@@ -721,7 +807,9 @@ const ClientSubscriptions = () => {
                                                     <div className="text-left md:text-right">
 
                                                         {currentSubscription.amount !==
-                                                            undefined && (
+                                                            undefined &&
+                                                            currentSubscription.amount !==
+                                                            null && (
                                                                 <p className="text-xl font-bold text-[#40295C]">
                                                                     ₹
                                                                     {Number(
@@ -867,7 +955,8 @@ const ClientSubscriptions = () => {
                                                                         <div>
 
                                                                             <h4 className="text-sm font-semibold text-zinc-900">
-                                                                                {subscription.subscription_plan?.name ||
+                                                                                {subscription.plan_name ||
+                                                                                    subscription.subscription_plan?.name ||
                                                                                     subscription.plan?.name ||
                                                                                     subscription.name ||
                                                                                     "Subscription"}
@@ -904,7 +993,7 @@ const ClientSubscriptions = () => {
                                                                                 )}
                                                                             </p>
                                                                         </div>
-                                                                            -
+                                                                        -
                                                                         <div>
                                                                             {/* <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
                                                                                 Ended

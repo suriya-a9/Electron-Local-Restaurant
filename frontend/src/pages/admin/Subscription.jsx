@@ -6,7 +6,6 @@ import {
     Pencil,
     X,
     Check,
-    Power,
 } from "lucide-react";
 import { useAuth } from "../../context/authContext";
 
@@ -50,15 +49,15 @@ const AdminSubscriptionPlans = () => {
         try {
             const headers = token
                 ? {
-                    Authorization: `Bearer ${token} `,
+                    Authorization: `Bearer ${token}`,
                 }
                 : {};
 
             const [plansRes, featuresRes] = await Promise.all([
-                fetch(`${API_BASE_URL}/subscription-plans`, {
+                fetch(`${API_BASE_URL}/api/subscription-plans`, {
                     headers,
                 }),
-                fetch(`${API_BASE_URL}/features`, {
+                fetch(`${API_BASE_URL}/api/admin-features`, {
                     headers,
                 }),
             ]);
@@ -119,9 +118,7 @@ const AdminSubscriptionPlans = () => {
 
             features: availableFeatures.map((feature) => {
                 const existingFeature = planFeatures.find(
-                    (item) =>
-                        item.feature_id === feature.id ||
-                        item.id === feature.id
+                    (item) => item.feature_id === feature.id
                 );
 
                 return {
@@ -213,8 +210,8 @@ const AdminSubscriptionPlans = () => {
 
         try {
             const url = editingId
-                ? `${API_BASE_URL}/subscription-plans/${editingId}`
-                : `${API_BASE_URL}/subscription-plans`;
+                ? `${API_BASE_URL}/api/subscription-plans/${editingId}`
+                : `${API_BASE_URL}/api/subscription-plans`;
 
             const method = editingId ? "PUT" : "POST";
 
@@ -261,7 +258,7 @@ const AdminSubscriptionPlans = () => {
 
         try {
             const res = await fetch(
-                `${API_BASE_URL}/subscription-plans/${plan.id}`,
+                `${API_BASE_URL}/api/subscription-plans/${plan.id}`,
                 {
                     method: "DELETE",
                     headers: token
@@ -530,20 +527,14 @@ const AdminSubscriptionPlans = () => {
                                                 : "border-zinc-200/80 bg-white hover:border-zinc-300"
                                                 }`}
                                         >
-                                            <div>
-                                                <p
-                                                    className={`text-sm font-semibold ${enabled
-                                                        ? "text-[#40295C]"
-                                                        : "text-zinc-700"
-                                                        }`}
-                                                >
-                                                    {feature.name}
-                                                </p>
-
-                                                <p className="mt-0.5 text-[11px] font-mono text-zinc-400">
-                                                    {feature.key}
-                                                </p>
-                                            </div>
+                                            <p
+                                                className={`text-sm font-semibold ${enabled
+                                                    ? "text-[#40295C]"
+                                                    : "text-zinc-700"
+                                                    }`}
+                                            >
+                                                {feature.name}
+                                            </p>
 
                                             <div
                                                 className={`flex h-6 w-6 items-center justify-center rounded-full border ${enabled
@@ -681,7 +672,7 @@ const AdminSubscriptionPlans = () => {
                                         Edit
                                     </button>
 
-                                    {/* <button
+                                    <button
                                         onClick={() =>
                                             handleDelete(plan)
                                         }
@@ -689,7 +680,7 @@ const AdminSubscriptionPlans = () => {
                                     >
                                         <Trash2 size={12} />
                                         Delete
-                                    </button> */}
+                                    </button>
                                 </div>
                             </div>
                         ))}

@@ -24,8 +24,6 @@ const emptyForm = {
     selling_price_tax_type: "exclusive",
     enable_stock: false,
     alert_quantity: "",
-    default_purchase_price_exc_tax: "",
-    default_purchase_price_inc_tax: "",
     margin_percent: 0,
     default_selling_price_exc_tax: "",
     default_selling_price_inc_tax: "",
@@ -68,11 +66,13 @@ const Products = () => {
     const isLocationRestrictedRole = restrictedLocationRoles.includes(
         normalizedRole
     );
-    const currentBusinessLocationId = Number(businessLocationId);
+    const currentBusinessLocationId = businessLocationId == null
+        ? ""
+        : String(businessLocationId);
     const visibleBusinessLocations =
         isLocationRestrictedRole && currentBusinessLocationId
             ? businessLocations.filter(
-                (location) => Number(location.id) === currentBusinessLocationId
+                (location) => String(location.id) === currentBusinessLocationId
             )
             : businessLocations;
 
@@ -159,7 +159,7 @@ const Products = () => {
         setLoadingTaxRates(true);
 
         try {
-            const res = await fetch(`${API_BASE_URL}/tax-rates`, {
+            const res = await fetch(`${API_BASE_URL}/api/tax-rates`, {
                 headers: {
                     Accept: "application/json",
                     ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -188,7 +188,7 @@ const Products = () => {
         setTaxRateError(null);
 
         try {
-            const res = await fetch(`${API_BASE_URL}/tax-rates`, {
+            const res = await fetch(`${API_BASE_URL}/api/tax-rates`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -239,19 +239,19 @@ const Products = () => {
                 subCategoriesRes,
                 businessLocationsRes,
             ] = await Promise.all([
-                fetch(`${API_BASE_URL}/units`, {
+                fetch(`${API_BASE_URL}/api/client/units`, {
                     headers,
                 }),
 
-                fetch(`${API_BASE_URL}/categories`, {
+                fetch(`${API_BASE_URL}/api/client/categories`, {
                     headers,
                 }),
 
-                fetch(`${API_BASE_URL}/sub-categories`, {
+                fetch(`${API_BASE_URL}/api/client/sub-categories`, {
                     headers,
                 }),
 
-                fetch(`${API_BASE_URL}/business-locations`, {
+                fetch(`${API_BASE_URL}/api/client/business-locations`, {
                     headers,
                 }),
             ]);
@@ -344,7 +344,7 @@ const Products = () => {
 
         try {
             const res = await fetch(
-                `${API_BASE_URL}/products?per_page=1000`,
+                `${API_BASE_URL}/api/products`,
                 {
                     headers: {
                         Accept: "application/json",
@@ -432,7 +432,7 @@ const Products = () => {
             default_selling_price_exc_tax: product.default_selling_price_exc_tax ?? "",
             default_selling_price_inc_tax: product.default_selling_price_inc_tax ?? "",
             business_location_ids: Array.isArray(product.business_locations)
-                ? product.business_locations.map((l) => Number(l.id))
+                ? product.business_locations.map((location) => String(location.id))
                 : [],
         });
         setEditingProductId(product.id);
@@ -485,14 +485,14 @@ const Products = () => {
             formData.append("image", form.image);
         }
 
-        formData.append("unit_id", String(Number(form.unit_id)));
-        formData.append("category_id", String(Number(form.category_id)));
-        formData.append("sub_category_id", String(Number(form.sub_category_id)));
+        formData.append("unit_id", String(form.unit_id || ""));
+        formData.append("category_id", String(form.category_id || ""));
+        formData.append("sub_category_id", String(form.sub_category_id || ""));
 
         if (form.applicable_tax_id === "") {
             formData.append("applicable_tax_id", "");
         } else {
-            formData.append("applicable_tax_id", String(Number(form.applicable_tax_id)));
+            formData.append("applicable_tax_id", String(form.applicable_tax_id));
         }
 
         formData.append("product_type", form.product_type);
@@ -524,7 +524,7 @@ const Products = () => {
         );
 
         form.business_location_ids.forEach((locationId) => {
-            formData.append("business_location_ids[]", String(Number(locationId)));
+            formData.append("business_location_ids[]", String(locationId));
         });
 
         const isEditing = Boolean(editingProductId);
@@ -535,8 +535,8 @@ const Products = () => {
 
         try {
             const url = isEditing
-                ? `${API_BASE_URL}/products/${editingProductId}`
-                : `${API_BASE_URL}/products`;
+                ? `${API_BASE_URL}/api/products/${editingProductId}`
+                : `${API_BASE_URL}/api/products`;
 
             const res = await fetch(url, {
                 method: "POST",
@@ -1062,52 +1062,90 @@ const Products = () => {
                                 Business Locations
                             </label>
 
-                            <div className="mt-1.5 grid grid-cols-1 gap-2 rounded-xl border border-zinc-200/80 bg-white p-4 sm:grid-cols-2 lg:grid-cols-3">
-                                {visibleBusinessLocations.map((location) => {
-                                    const selected =
-                                        form.business_location_ids.includes(
-                                            Number(location.id)
+                            <div className="mt-1.5 rounded-xl border border-zinc-200/80 bg-white p-4">
+                                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                                    {visibleBusinessLocations.map((location) => {
+                                        const locationId = String(location.id);
+
+                                        const selected = form.business_location_ids.includes(
+                                            locationId
                                         );
 
-                                    return (
-                                        <label
-                                            key={location.id}
-                                            className="flex cursor-pointer items-center gap-3 rounded-lg p-2 hover:bg-zinc-50"
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                checked={selected}
-                                                disabled={
-                                                    isLocationRestrictedRole &&
-                                                    Number(location.id) !==
-                                                    currentBusinessLocationId
-                                                }
-                                                onChange={(e) => {
-                                                    const id = Number(location.id);
+                                        return (
+                                            <label
+                                                key={location.id}
+                                                className={`flex cursor-pointer items-center gap-3 rounded-lg p-3 transition-colors ${selected
+                                                        ? "bg-[#40295C]/5"
+                                                        : "hover:bg-zinc-50"
+                                                    }`}
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selected}
+                                                    disabled={
+                                                        isLocationRestrictedRole &&
+                                                        locationId !== currentBusinessLocationId
+                                                    }
+                                                    onChange={(e) => {
+                                                        setForm((prev) => {
+                                                            const currentIds =
+                                                                Array.isArray(
+                                                                    prev.business_location_ids
+                                                                )
+                                                                    ? prev.business_location_ids
+                                                                    : [];
 
-                                                    setForm((prev) => ({
-                                                        ...prev,
-                                                        business_location_ids:
-                                                            e.target.checked
-                                                                ? [
-                                                                    ...prev.business_location_ids,
-                                                                    id,
-                                                                ]
-                                                                : prev.business_location_ids.filter(
-                                                                    (locationId) =>
-                                                                        locationId !== id
-                                                                ),
-                                                    }));
-                                                }}
-                                                className="h-4 w-4 accent-[#40295C] disabled:cursor-not-allowed disabled:opacity-50"
-                                            />
+                                                            if (e.target.checked) {
+                                                                // Prevent duplicate IDs
+                                                                if (currentIds.includes(locationId)) {
+                                                                    return prev;
+                                                                }
 
-                                            <span className="text-sm font-medium text-zinc-700">
-                                                {location.name}
-                                            </span>
-                                        </label>
-                                    );
-                                })}
+                                                                return {
+                                                                    ...prev,
+                                                                    business_location_ids: [
+                                                                        ...currentIds,
+                                                                        locationId,
+                                                                    ],
+                                                                };
+                                                            }
+
+                                                            return {
+                                                                ...prev,
+                                                                business_location_ids:
+                                                                    currentIds.filter(
+                                                                        (id) => id !== locationId
+                                                                    ),
+                                                            };
+                                                        });
+                                                    }}
+                                                    className="h-4 w-4 accent-[#40295C]"
+                                                />
+
+                                                <div className="flex flex-col">
+                                                    <span className="text-sm font-semibold text-zinc-700">
+                                                        {location.name}
+                                                    </span>
+
+                                                    {location.code && (
+                                                        <span className="text-xs text-zinc-400">
+                                                            {location.code}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </label>
+                                        );
+                                    })}
+                                </div>
+
+                                {form.business_location_ids.length > 0 && (
+                                    <div className="mt-3 border-t border-zinc-100 pt-3">
+                                        <span className="text-xs font-semibold text-[#40295C]">
+                                            {form.business_location_ids.length} location
+                                            {form.business_location_ids.length !== 1 ? "s" : ""} selected
+                                        </span>
+                                    </div>
+                                )}
                             </div>
 
                             {getFormError("business_location_ids") && (

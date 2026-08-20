@@ -2,6 +2,16 @@ import { createContext, useContext, useState, useEffect } from "react";
 
 const AuthContext = createContext();
 
+const getUserRole = (user, authPortal) => {
+    const explicitRole = user?.roles?.[0]?.name || user?.role;
+
+    if (explicitRole) {
+        return explicitRole;
+    }
+
+    return authPortal === "client" ? "admin" : null;
+};
+
 export const AuthProvider = ({ children }) => {
     const [token, setToken] = useState(null);
     const [portal, setPortal] = useState(null);
@@ -30,7 +40,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     const login = (authToken, user, authSubscription = null, authPortal = "client") => {
-        const userRole = user?.roles?.[0]?.name || null;
+        const userRole = getUserRole(user, authPortal);
         const userPermissions = user?.permissions || [];
         const userBusinessLocationId = user?.business_location_id ?? null;
 
@@ -57,7 +67,16 @@ export const AuthProvider = ({ children }) => {
 
         if (storedToken && storedUser) {
             try {
+                if (storedUser === "undefined" || storedUser === "null") {
+                    throw new Error("Stored user data is invalid");
+                }
+
                 const user = JSON.parse(storedUser);
+
+                if (!user || typeof user !== "object") {
+                    throw new Error("Stored user data is invalid");
+                }
+
                 const storedSubscription = localStorage.getItem("subscription");
                 const storedPortal = localStorage.getItem("portal") || "client";
 
@@ -65,7 +84,7 @@ export const AuthProvider = ({ children }) => {
                 setPortal(storedPortal);
                 setId(user.id);
                 setName(user.name);
-                setRole(user.roles?.[0]?.name || null);
+                setRole(getUserRole(user, storedPortal));
                 setBusinessLocationId(user.business_location_id ?? null);
                 setSubscription(storedSubscription ? JSON.parse(storedSubscription) : null);
                 setPermissions(user.permissions || []);
