@@ -58,10 +58,16 @@ const addProduct = async (req, res) => {
 
         const product = await createProduct(clientId, payload);
 
-        const locationIds = parseLocationIds(req.body);
+        const locationIds = req.user.business_location_id
+            ? [req.user.business_location_id]
+            : parseLocationIds(req.body);
         await setProductLocations(product.id, locationIds);
 
-        const fullProduct = await findProductById(product.id, clientId);
+        const fullProduct = await findProductById(
+            product.id,
+            clientId,
+            req.user.business_location_id
+        );
 
         return res.status(201).json({
             success: true,
@@ -92,7 +98,11 @@ const editProduct = async (req, res) => {
         const clientId = req.user.id;
         const { id } = req.params;
 
-        const existing = await findProductById(id, clientId);
+        const existing = await findProductById(
+            id,
+            clientId,
+            req.user.business_location_id
+        );
 
         if (!existing) {
             return res.status(404).json({
@@ -105,10 +115,16 @@ const editProduct = async (req, res) => {
 
         await updateProduct(id, clientId, payload);
 
-        const locationIds = parseLocationIds(req.body);
+        const locationIds = req.user.business_location_id
+            ? [req.user.business_location_id]
+            : parseLocationIds(req.body);
         await setProductLocations(id, locationIds);
 
-        const fullProduct = await findProductById(id, clientId);
+        const fullProduct = await findProductById(
+            id,
+            clientId,
+            req.user.business_location_id
+        );
 
         return res.status(200).json({
             success: true,
@@ -140,6 +156,7 @@ const listProducts = async (req, res) => {
             search,
             page: pageNum,
             limit: limitNum,
+            locationId: req.user.business_location_id || req.query.business_location_id,
         });
 
         return res.status(200).json({
@@ -169,7 +186,11 @@ const getProduct = async (req, res) => {
         const clientId = req.user.id;
         const { id } = req.params;
 
-        const product = await findProductById(id, clientId);
+        const product = await findProductById(
+            id,
+            clientId,
+            req.user.business_location_id
+        );
 
         if (!product) {
             return res.status(404).json({

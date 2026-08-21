@@ -37,6 +37,11 @@ const addSale = async (req, res) => {
     try {
         const { errors, items, payments } = validateSale(req.body);
 
+        if (req.user.business_location_id &&
+            String(req.body.business_location_id) !== String(req.user.business_location_id)) {
+            errors.push("Sale location must match your assigned business location");
+        }
+
         if (errors.length > 0) {
             return res.status(400).json({ success: false, message: errors[0], errors });
         }
@@ -69,7 +74,7 @@ const addSale = async (req, res) => {
 
         const sale = await createSale({
             clientId: req.user.id,
-            locationId: req.body.business_location_id,
+            locationId: req.user.business_location_id || req.body.business_location_id,
             saleType: req.body.sale_type,
             customerName: String(req.body.customer_name || "Walk-In Customer").trim() || "Walk-In Customer",
             discountAmount,
@@ -88,7 +93,10 @@ const addSale = async (req, res) => {
 
 const getSales = async (req, res) => {
     try {
-        const sales = await listSales(req.user.id, req.query.business_location_id);
+        const sales = await listSales(
+            req.user.id,
+            req.user.business_location_id || req.query.business_location_id
+        );
         return res.json({ success: true, data: sales });
     } catch (error) {
         console.error("List sales error:", error);
@@ -98,7 +106,7 @@ const getSales = async (req, res) => {
 
 const getSale = async (req, res) => {
     try {
-        const sale = await getSaleById(req.user.id, req.params.id);
+        const sale = await getSaleById(req.user.id, req.params.id, undefined, req.user.business_location_id);
         if (!sale) return res.status(404).json({ success: false, message: "Sale not found" });
         return res.json({ success: true, data: sale });
     } catch (error) {
@@ -109,7 +117,7 @@ const getSale = async (req, res) => {
 
 const removeSale = async (req, res) => {
     try {
-        const sale = await cancelSale(req.user.id, req.params.id);
+        const sale = await cancelSale(req.user.id, req.params.id, req.user.business_location_id);
         if (!sale) return res.status(404).json({ success: false, message: "Sale not found or already cancelled" });
         return res.json({ success: true, message: "Sale cancelled successfully", data: sale });
     } catch (error) {

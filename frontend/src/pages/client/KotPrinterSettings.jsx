@@ -59,7 +59,7 @@ const KotPrinterSettings = () => {
         setLoadingLocations(true);
 
         try {
-            const res = await fetch(`${API_BASE_URL}/business-locations?per_page=1000`, {
+            const res = await fetch(`${API_BASE_URL}/api/client/business-locations`, {
                 headers: { Accept: "application/json", ...authHeaders },
             });
             const json = await res.json();
@@ -82,7 +82,7 @@ const KotPrinterSettings = () => {
 
     async function loadCategories() {
         try {
-            const res = await fetch(`${API_BASE_URL}/categories?per_page=1000`, {
+            const res = await fetch(`${API_BASE_URL}/api/client/categories`, {
                 headers: { Accept: "application/json", ...authHeaders },
             });
             const json = await res.json();
@@ -108,7 +108,7 @@ const KotPrinterSettings = () => {
 
         try {
             const res = await fetch(
-                `${API_BASE_URL}/kot-printer-settings?business_location_id=${locationId}`,
+                `${API_BASE_URL}/api/kot-printer-settings?business_location_id=${locationId}`,
                 { headers: { Accept: "application/json", ...authHeaders } }
             );
 
@@ -117,6 +117,7 @@ const KotPrinterSettings = () => {
                     ...emptyForm,
                     business_location_id: locationId,
                 }));
+                setSettingsId(null);
                 return;
             }
 
@@ -198,7 +199,6 @@ const KotPrinterSettings = () => {
     async function removeStation(index) {
         const station = form.stations[index];
 
-        // Unsaved row (no id yet) — just drop it locally, nothing to delete server-side
         if (!station.id) {
             setForm((prev) => ({
                 ...prev,
@@ -212,7 +212,7 @@ const KotPrinterSettings = () => {
 
         try {
             const res = await fetch(
-                `${API_BASE_URL}/kot-printer-settings/station/${station.id}`,
+                `${API_BASE_URL}/api/kot-printer-settings/station/${station.id}`,
                 {
                     method: "DELETE",
                     headers: { Accept: "application/json", ...authHeaders },
@@ -258,7 +258,7 @@ const KotPrinterSettings = () => {
         try {
             if (settingsId) {
                 const settingsPayload = {
-                    business_location_id: Number(form.business_location_id),
+                    business_location_id: form.business_location_id,
                     system_ip: form.system_ip.trim(),
                     billing_printer_ip: form.billing_printer_ip.trim(),
                     billing_printer_port: Number(form.billing_printer_port),
@@ -267,7 +267,7 @@ const KotPrinterSettings = () => {
                     has_extra_kot: form.has_extra_kot,
                 };
 
-                const res = await fetch(`${API_BASE_URL}/kot-printer-settings/${settingsId}`, {
+                const res = await fetch(`${API_BASE_URL}/api/kot-printer-settings/${settingsId}`, {
                     method: "PUT",
                     headers: {
                         "Content-Type": "application/json",
@@ -283,7 +283,7 @@ const KotPrinterSettings = () => {
                 }
             } else {
                 const createPayload = {
-                    business_location_id: Number(form.business_location_id),
+                    business_location_id: form.business_location_id,
                     system_ip: form.system_ip.trim(),
                     billing_printer_ip: form.billing_printer_ip.trim(),
                     billing_printer_port: Number(form.billing_printer_port),
@@ -293,14 +293,14 @@ const KotPrinterSettings = () => {
                     stations:
                         form.has_extra_kot === "yes"
                             ? form.stations.map((s) => ({
-                                category_id: Number(s.category_id),
+                                category_id: s.category_id,
                                 printer_ip: s.printer_ip.trim(),
                                 printer_port: Number(s.printer_port),
                             }))
                             : [],
                 };
 
-                const res = await fetch(`${API_BASE_URL}/kot-printer-settings`, {
+                const res = await fetch(`${API_BASE_URL}/api/kot-printer-settings`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
@@ -324,9 +324,8 @@ const KotPrinterSettings = () => {
             if (form.has_extra_kot === "yes") {
                 for (const station of form.stations) {
                     if (station.id) {
-                        // Existing station — update
                         const res = await fetch(
-                            `${API_BASE_URL}/kot-printer-settings/station/${station.id}`,
+                            `${API_BASE_URL}/api/kot-printer-settings/station/${station.id}`,
                             {
                                 method: "PUT",
                                 headers: {
@@ -345,8 +344,7 @@ const KotPrinterSettings = () => {
                             throw new Error(json.message || "Failed to update a KOT station");
                         }
                     } else {
-                        // New station — create
-                        const res = await fetch(`${API_BASE_URL}/kot-printer-settings/station`, {
+                        const res = await fetch(`${API_BASE_URL}/api/kot-printer-settings/station`, {
                             method: "POST",
                             headers: {
                                 "Content-Type": "application/json",
@@ -354,8 +352,8 @@ const KotPrinterSettings = () => {
                                 ...authHeaders,
                             },
                             body: JSON.stringify({
-                                business_location_id: Number(form.business_location_id),
-                                category_id: Number(station.category_id),
+                                business_location_id: form.business_location_id,
+                                category_id: station.category_id,
                                 printer_ip: station.printer_ip.trim(),
                                 printer_port: Number(station.printer_port),
                             }),

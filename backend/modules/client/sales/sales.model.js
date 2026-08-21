@@ -12,6 +12,9 @@ const createSale = async ({ clientId, locationId, saleType, customerName, discou
     try {
         await connection.query("BEGIN");
 
+        // Serialize sale_number assignment per client (released automatically at COMMIT/ROLLBACK)
+        await connection.query("SELECT pg_advisory_xact_lock(hashtext($1))", [clientId]);
+
         const locationResult = await connection.query(
             "SELECT id FROM business_locations WHERE id = $1 AND client_id = $2",
             [locationId, clientId]
@@ -48,13 +51,19 @@ const createSale = async ({ clientId, locationId, saleType, customerName, discou
                 ? "paid"
                 : "partial";
 
+        const numberResult = await connection.query(
+            "SELECT COALESCE(MAX(sale_number), 0) + 1 AS next_number FROM pos_sales WHERE client_id = $1",
+            [clientId]
+        );
+        const saleNumber = numberResult.rows[0].next_number;
+
         const saleResult = await connection.query(
             `INSERT INTO pos_sales
-                (client_id, business_location_id, invoice_number, sale_type, customer_name,
+                (client_id, business_location_id, invoice_number, sale_number, sale_type, customer_name,
                  subtotal, discount_amount, order_tax_amount, round_off_amount, total_amount, payment_status)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
              RETURNING *`,
-            [clientId, locationId, createInvoiceNumber(), saleType, customerName,
+            [clientId, locationId, createInvoiceNumber(), saleNumber, saleType, customerName,
                 subtotal.toFixed(2), discountAmount, taxAmount, roundOffAmount,
                 totalAmount.toFixed(2), paymentStatus]
         );
@@ -68,7 +77,7 @@ const createSale = async ({ clientId, locationId, saleType, customerName, discou
                     (sale_id, product_id, quantity, unit_price_inc_tax, discount_amount, line_total)
                  VALUES ($1, $2, $3, $4, $5, $6)`,
                 [sale.id, item.productId, item.quantity, item.unitPrice,
-                    item.discountAmount, lineTotal.toFixed(2)]
+                item.discountAmount, lineTotal.toFixed(2)]
             );
         }
 
@@ -116,10 +125,11 @@ const saleSelect = `
     JOIN business_locations bl ON bl.id = s.business_location_id
 `;
 
-const getSaleById = async (clientId, saleId, connection = pool) => {
+const getSaleById = async (clientId, saleId, connection = pool, locationId = null) => {
     const result = await connection.query(
-        `${saleSelect} WHERE s.client_id = $1 AND s.id = $2`,
-        [clientId, saleId]
+        `${saleSelect} WHERE s.client_id = $1 AND s.id = $2
+         AND ($3::uuid IS NULL OR s.business_location_id = $3)`,
+        [clientId, saleId, locationId]
     );
     return result.rows[0] || null;
 };
@@ -142,13 +152,15 @@ const listSales = async (clientId, locationId) => {
     return result.rows;
 };
 
-const cancelSale = async (clientId, saleId) => {
+const cancelSale = async (clientId, saleId, locationId = null) => {
     const result = await pool.query(
         `UPDATE pos_sales
          SET status = 'cancelled', payment_status = 'cancelled', updated_at = now()
-         WHERE id = $1 AND client_id = $2 AND status <> 'cancelled'
+                 WHERE id = $1 AND client_id = $2
+                     AND ($3::uuid IS NULL OR business_location_id = $3)
+                     AND status <> 'cancelled'
          RETURNING *`,
-        [saleId, clientId]
+        [saleId, clientId, locationId]
     );
     return result.rows[0] || null;
 };

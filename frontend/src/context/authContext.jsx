@@ -6,7 +6,9 @@ const getUserRole = (user, authPortal) => {
     const explicitRole = user?.roles?.[0]?.name || user?.role;
 
     if (explicitRole) {
-        return explicitRole;
+        return String(explicitRole).toLowerCase() === "cahier"
+            ? "cashier"
+            : explicitRole;
     }
 
     return authPortal === "client" ? "admin" : null;

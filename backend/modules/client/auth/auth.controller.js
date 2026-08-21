@@ -2,6 +2,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
 const { findClientByEmail } = require("../../admin/clients/clients.model");
+const { findEmployeeLoginByEmail } = require("../employees/employees.model");
 
 const login = async (req, res) => {
     try {
@@ -25,7 +26,57 @@ const login = async (req, res) => {
             });
         }
 
-        const client = await findClientByEmail(email.trim());
+        const normalizedEmail = email.trim();
+        const client = await findClientByEmail(normalizedEmail);
+
+        if (!client) {
+            const employee = await findEmployeeLoginByEmail(normalizedEmail);
+
+            if (!employee || !(await bcrypt.compare(password, employee.password))) {
+                return res.status(401).json({
+                    success: false,
+                    message: "Invalid email or password",
+                });
+            }
+
+            if (employee.client_status === "suspended" || employee.client_status === "inactive") {
+                return res.status(403).json({
+                    success: false,
+                    message: `Your account is ${employee.client_status}. Please contact support.`,
+                });
+            }
+
+            const token = jwt.sign(
+                {
+                    id: employee.client_id,
+                    employee_id: employee.id,
+                    email: employee.email,
+                    role: employee.role,
+                    business_location_id: employee.business_location_id,
+                },
+                process.env.JWT_SECRET,
+                { expiresIn: "7d" }
+            );
+
+            return res.status(200).json({
+                success: true,
+                message: "Login successful",
+                data: {
+                    user: {
+                        id: employee.client_id,
+                        employee_id: employee.id,
+                        client_id: employee.client_id,
+                        name: employee.name,
+                        email: employee.email,
+                        role: employee.role,
+                        business_location_id: employee.business_location_id,
+                        business_location: employee.business_location,
+                        roles: [{ name: employee.role }],
+                    },
+                    token,
+                },
+            });
+        }
 
         if (!client) {
             return res.status(401).json({

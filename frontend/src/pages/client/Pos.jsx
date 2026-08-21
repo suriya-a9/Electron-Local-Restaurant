@@ -432,7 +432,10 @@ const POS = () => {
         setSelectedSale(null);
 
         try {
-            const res = await fetch(`${API_BASE_URL}/api/sales`, {
+            const query = businessLocationId
+                ? `?business_location_id=${encodeURIComponent(businessLocationId)}`
+                : "";
+            const res = await fetch(`${API_BASE_URL}/api/sales${query}`, {
                 headers: { Accept: "application/json", ...authHeaders },
             });
             const json = await res.json();
@@ -921,7 +924,7 @@ const POS = () => {
                                     </p>
                                 ) : (
                                     <div className="divide-y divide-zinc-100">
-                                        {salesList.map((sale, index) => (
+                                        {salesList.map((sale) => (
                                             <button
                                                 key={sale.id}
                                                 onClick={() => viewSale(sale.id)}
@@ -930,7 +933,7 @@ const POS = () => {
                                             >
                                                 <div>
                                                     <p className="text-xs font-bold text-zinc-900">
-                                                        {`Sale #${index + 1}`}
+                                                        {`Sale #${sale.sale_number}`}
                                                     </p>
                                                     <p className="text-[11px] text-zinc-400">
                                                         {sale.customer_name || "Walk-In Customer"} · {sale.sale_type} · {sale.business_location_name || "-"}

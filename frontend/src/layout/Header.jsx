@@ -96,12 +96,12 @@ const Header = () => {
                             ${accountOpen ? 'flex flex-col' : 'hidden'}
                         `}
                     >
-                        <button
+                        {/* <button
                             className="bg-transparent border-none px-4 py-2.5 text-left cursor-pointer text-[#333] hover:bg-[#f5f7fa]"
                             onClick={() => { navigate('/profile'); setAccountOpen(false); }}
                         >
                             Profile
-                        </button>
+                        </button> */}
                         <button
                             className="bg-transparent border-none px-4 py-2.5 text-left cursor-pointer text-[#333] hover:bg-[#f5f7fa]"
                             onClick={handleLogout}

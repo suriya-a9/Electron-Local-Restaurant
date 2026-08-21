@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, MapPin, Trash2 } from "lucide-react";
 import { useAuth } from "../../context/authContext";
+import Pagination from "../../components/Pagination";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -37,6 +38,8 @@ const Sales = () => {
     const [selectedSale, setSelectedSale] = useState(null);
     const [selectedSaleLoading, setSelectedSaleLoading] = useState(false);
     const [cancellingId, setCancellingId] = useState(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
 
     useEffect(() => {
         if (!authBusinessLocationId) {
@@ -46,10 +49,12 @@ const Sales = () => {
 
     useEffect(() => {
         if (businessLocationId) {
+            setCurrentPage(1);
             loadSales();
         } else {
             setSalesList([]);
             setSelectedSale(null);
+            setCurrentPage(1);
         }
     }, [businessLocationId]);
 
@@ -84,7 +89,7 @@ const Sales = () => {
 
         try {
             const query = businessLocationId
-                ? `?business_location_id=${businessLocationId}&per_page=1000`
+                ? `?business_location_id=${encodeURIComponent(businessLocationId)}&per_page=1000`
                 : "?per_page=1000";
 
             const res = await fetch(`${API_BASE_URL}/api/sales${query}`, {
@@ -105,6 +110,9 @@ const Sales = () => {
                     : [];
 
             setSalesList(list);
+
+            const totalPages = Math.max(Math.ceil(list.length / itemsPerPage), 1);
+            setCurrentPage((page) => Math.min(page, totalPages));
 
             if (selectedSale && !list.some((sale) => sale.id === selectedSale.id)) {
                 setSelectedSale(null);
@@ -166,6 +174,12 @@ const Sales = () => {
         }
     }
 
+    const totalPages = Math.ceil(salesList.length / itemsPerPage);
+    const paginatedSales = salesList.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+    );
+
     return (
         <div className="min-h-screen bg-zinc-50 p-4 md:p-6">
             {!authBusinessLocationId && (
@@ -216,7 +230,7 @@ const Sales = () => {
                                 <p className="p-4 text-xs font-medium text-zinc-400">No sales found.</p>
                             ) : (
                                 <div className="divide-y divide-zinc-100">
-                                    {salesList.map((sale, index) => (
+                                    {paginatedSales.map((sale) => (
                                         <button
                                             key={sale.id}
                                             onClick={() => viewSale(sale.id)}
@@ -224,7 +238,7 @@ const Sales = () => {
                                         >
                                             <div>
                                                 <p className="text-xs font-bold text-zinc-900">
-                                                    {`Sale #${index + 1}`}
+                                                    {`Sale #${sale.sale_number}`}
                                                 </p>
                                                 <p className="text-[11px] text-zinc-500">
                                                     {sale.customer_name || "Walk-In Customer"} · {sale.sale_type} · {sale.business_location_name || "-"}
@@ -348,6 +362,14 @@ const Sales = () => {
                             )}
                         </div>
                     </div>
+
+                    {!loadingSales && salesList.length > 0 && totalPages > 1 && (
+                        <Pagination
+                            currentPage={currentPage}
+                            totalPages={totalPages}
+                            onPageChange={setCurrentPage}
+                        />
+                    )}
                 </div>
             )}
         </div>

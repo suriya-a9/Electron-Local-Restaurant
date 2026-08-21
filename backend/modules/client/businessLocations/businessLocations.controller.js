@@ -93,7 +93,11 @@ const listBusinessLocations = async (req, res) => {
     try {
         const client_id = req.user.id;
 
-        const locations = await getLocationsByClient(client_id);
+        const locations = req.user.business_location_id
+            ? await findLocationById(req.user.business_location_id, client_id).then((location) =>
+                location ? [location] : []
+            )
+            : await getLocationsByClient(client_id);
 
         return res.status(200).json({
             success: true,

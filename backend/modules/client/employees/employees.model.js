@@ -77,6 +77,30 @@ const findEmployeeByEmail = async (client_id, email) => {
     return result.rows[0];
 };
 
+const findEmployeeLoginByEmail = async (email) => {
+    const query = `
+        SELECT
+            e.id,
+            e.client_id,
+            e.business_location_id,
+            e.name,
+            e.email,
+            e.password,
+            c.status AS client_status,
+            json_build_object('id', bl.id, 'name', bl.name, 'code', bl.code) AS business_location,
+            r.name AS role
+        FROM employees e
+        JOIN clients c ON c.id = e.client_id
+        JOIN business_locations bl ON bl.id = e.business_location_id
+        JOIN roles r ON r.id = e.role_id
+        WHERE e.email = $1;
+    `;
+
+    const result = await pool.query(query, [email]);
+
+    return result.rows[0];
+};
+
 const findEmployeeByEmailExcludingId = async (client_id, email, excludeId) => {
     const query = `
         SELECT id FROM employees
@@ -199,6 +223,7 @@ module.exports = {
     findLocationForClient,
     createEmployee,
     findEmployeeByEmail,
+    findEmployeeLoginByEmail,
     findEmployeeByEmailExcludingId,
     findEmployeeById,
     getEmployeesByClient,

@@ -59,7 +59,7 @@ const Products = () => {
     const [editingProductId, setEditingProductId] = useState(null);
 
     const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 5;
+    const itemsPerPage = 10;
 
     const restrictedLocationRoles = ["cashier", "manager", "waiter"];
     const normalizedRole = String(role || "").toLowerCase();
@@ -380,7 +380,7 @@ const Products = () => {
                         Array.isArray(product.business_locations) &&
                         product.business_locations.some(
                             (location) =>
-                                Number(location.id) === currentBusinessLocationId
+                                String(location.id) === currentBusinessLocationId
                         )
                     )
                     : allProducts;

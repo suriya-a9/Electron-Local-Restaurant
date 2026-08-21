@@ -24,6 +24,7 @@ const clientTaxRates = require("./modules/client/taxRates/taxRates.routes");
 const clientProducts = require("./modules/client/product/products.routes");
 const clientSales = require("./modules/client/sales/sales.routes");
 const clientDashboard = require("./modules/client/dashboard/dashboard.routes");
+const clientKOTSettings = require("./modules/client/kotPrinterSettings/kotPrinterSettings.routes");
 
 startSubscriptionExpiryJob();
 
@@ -58,6 +59,7 @@ app.use("/api/products", clientProducts);
 app.use("/api/sales", clientSales);
 app.use("/api/client/dashboard", clientDashboard);
 app.use("/api/tax-rates", clientTaxRates);
+app.use("/api/kot-printer-settings", clientKOTSettings);
 
 app.use((err, req, res, next) => {
     logger.error(err.stack);

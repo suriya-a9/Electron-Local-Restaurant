@@ -146,25 +146,35 @@ const PRODUCT_SELECT = `
     LEFT JOIN sub_categories sc ON sc.id = p.sub_category_id
 `;
 
-const getAllProducts = async (clientId, { search, page, limit }) => {
+const getAllProducts = async (clientId, { search, page, limit, locationId }) => {
     const offset = (page - 1) * limit;
 
-    const query = `
+        const query = `
         ${PRODUCT_SELECT}
         WHERE p.client_id = $1
-          AND ($2::text IS NULL OR p.name ILIKE '%' || $2 || '%' OR p.sku ILIKE '%' || $2 || '%')
+                    AND ($2::uuid IS NULL OR EXISTS (
+                            SELECT 1 FROM product_business_locations scoped_pbl
+                            WHERE scoped_pbl.product_id = p.id
+                                AND scoped_pbl.business_location_id = $2
+                    ))
+                    AND ($3::text IS NULL OR p.name ILIKE '%' || $3 || '%' OR p.sku ILIKE '%' || $3 || '%')
         ORDER BY p.created_at DESC
-        LIMIT $3 OFFSET $4;
+                LIMIT $4 OFFSET $5;
     `;
 
     const countQuery = `
         SELECT COUNT(*) AS total
         FROM products p
-        WHERE p.client_id = $1
-          AND ($2::text IS NULL OR p.name ILIKE '%' || $2 || '%' OR p.sku ILIKE '%' || $2 || '%');
+                WHERE p.client_id = $1
+                    AND ($2::uuid IS NULL OR EXISTS (
+                            SELECT 1 FROM product_business_locations scoped_pbl
+                            WHERE scoped_pbl.product_id = p.id
+                                AND scoped_pbl.business_location_id = $2
+                    ))
+                    AND ($3::text IS NULL OR p.name ILIKE '%' || $3 || '%' OR p.sku ILIKE '%' || $3 || '%');
     `;
 
-    const values = [clientId, search || null];
+        const values = [clientId, locationId || null, search || null];
 
     const [rowsResult, countResult] = await Promise.all([
         pool.query(query, [...values, limit, offset]),
@@ -177,10 +187,17 @@ const getAllProducts = async (clientId, { search, page, limit }) => {
     };
 };
 
-const findProductById = async (id, clientId) => {
-    const query = `${PRODUCT_SELECT} WHERE p.id = $1 AND p.client_id = $2;`;
+const findProductById = async (id, clientId, locationId = null) => {
+    const query = `${PRODUCT_SELECT}
+        WHERE p.id = $1
+          AND p.client_id = $2
+          AND ($3::uuid IS NULL OR EXISTS (
+              SELECT 1 FROM product_business_locations scoped_pbl
+              WHERE scoped_pbl.product_id = p.id
+                AND scoped_pbl.business_location_id = $3
+          ));`;
 
-    const result = await pool.query(query, [id, clientId]);
+    const result = await pool.query(query, [id, clientId, locationId]);
 
     return result.rows[0];
 };
