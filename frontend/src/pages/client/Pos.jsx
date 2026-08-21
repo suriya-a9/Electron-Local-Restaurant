@@ -1,95 +1,65 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
-    Search,
-    Plus,
-    Minus,
+    MapPin, Calendar, FastForward, Columns, UserPlus, Printer,
+    Calculator, RotateCcw, MoreVertical, Plus, Minus, User, UserCheck, Scan, Utensils, Package, Bike, ShoppingBag, Pause, Lock,
+    FileText, Clock, Trash2, Edit2, ArrowRight, ChevronRight, ChevronLeft,
     X,
-    Trash2,
-    ArrowRight,
-    Pause,
-    Lock,
-    Receipt,
-    History,
-    ChevronLeft,
-    ChevronRight,
-    UtensilsCrossed,
-    Package,
-    Bike,
-    Truck,
-    ShoppingBag,
-    MapPin,
 } from "lucide-react";
 import { useAuth } from "../../context/authContext";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const API_IMAGE_URL = import.meta.env.VITE_API_IMAGE_URL || "";
 
-const BRAND = "#40295C";
-const BRAND_DARK = "#321f49";
-
 const SALE_TYPES = [
-    {
-        key: "dining",
-        label: "Dining",
-        icon: UtensilsCrossed,
-        active: "border-[#40295C] bg-[#40295C] text-white",
-        idle: "border-[#40295C]/20 bg-[#40295C]/5 text-[#40295C]",
-    },
-    {
-        key: "parcel",
-        label: "Parcel",
-        icon: Package,
-        active: "border-amber-500 bg-amber-500 text-white",
-        idle: "border-amber-200 bg-amber-50 text-amber-700",
-    },
-    {
-        key: "zomato",
-        label: "Zomato",
-        icon: Bike,
-        active: "border-rose-500 bg-rose-500 text-white",
-        idle: "border-rose-200 bg-rose-50 text-rose-700",
-    },
-    {
-        key: "swiggy",
-        label: "Swiggy",
-        icon: Truck,
-        active: "border-orange-500 bg-orange-500 text-white",
-        idle: "border-orange-200 bg-orange-50 text-orange-700",
-    },
-    {
-        key: "delivery",
-        label: "Delivery",
-        icon: ShoppingBag,
-        active: "border-emerald-500 bg-emerald-500 text-white",
-        idle: "border-emerald-200 bg-emerald-50 text-emerald-700",
-    },
+    { key: "dining", label: "Dining", icon: Utensils, color: null },
+    { key: "parcel", label: "Parcel", icon: Package, color: null },
+    { key: "zomato", label: "Zomato", icon: ShoppingBag, color: "text-red-500" },
+    { key: "swiggy", label: "Swiggy", icon: ShoppingBag, color: "text-orange-500" },
+    { key: "delivery", label: "Delivery", icon: Bike, color: "text-emerald-600" },
 ];
 
 const SALE_TYPE_BADGE = {
-    dining: "bg-[#40295C]/10 text-[#40295C]",
-    parcel: "bg-amber-100 text-amber-700",
-    zomato: "bg-rose-100 text-rose-700",
-    swiggy: "bg-orange-100 text-orange-700",
-    delivery: "bg-emerald-100 text-emerald-700",
+    dining: "bg-indigo-50 text-indigo-600",
+    parcel: "bg-amber-50 text-amber-700",
+    zomato: "bg-red-50 text-red-600",
+    swiggy: "bg-orange-50 text-orange-700",
+    delivery: "bg-emerald-50 text-emerald-700",
 };
 
-const CATEGORY_COLORS = [
-    "bg-[#40295C]/10 text-[#40295C] data-[active=true]:bg-[#40295C] data-[active=true]:text-white",
-    "bg-sky-100 text-sky-700 data-[active=true]:bg-sky-500 data-[active=true]:text-white",
-    "bg-amber-100 text-amber-700 data-[active=true]:bg-amber-500 data-[active=true]:text-white",
-    "bg-rose-100 text-rose-700 data-[active=true]:bg-rose-500 data-[active=true]:text-white",
-    "bg-emerald-100 text-emerald-700 data-[active=true]:bg-emerald-500 data-[active=true]:text-white",
-    "bg-indigo-100 text-indigo-700 data-[active=true]:bg-indigo-500 data-[active=true]:text-white",
+const TABLE_STATUS_STYLES = {
+    available: { bg: "bg-emerald-50/40 border-emerald-200", amount: "text-emerald-600" },
+    reserved: { bg: "bg-amber-50/40 border-amber-200", amount: "text-amber-600" },
+    occupied: { bg: "bg-sky-50/40 border-sky-200", amount: "text-sky-600" },
+    kot_sent: {
+        bg: "bg-purple-50/40 border-purple-200",
+        amount: "text-indigo-600",
+        badge: { label: "KOT Sent", style: "bg-indigo-100 text-indigo-600" },
+    },
+    bill_requested: {
+        bg: "bg-rose-50/40 border-rose-200",
+        amount: "text-rose-600",
+        badge: { label: "Bill Requested", style: "bg-red-100 text-red-500" },
+    },
+};
+
+const PAYMENT_BUTTONS = [
+    { key: "credit", label: "Credit Sale", method: "credit", cls: "bg-indigo-600 hover:bg-indigo-700 text-white" },
+    { key: "card", label: "Card", method: "card", cls: "bg-sky-500 hover:bg-sky-600 text-white" },
+    { key: "multiple", label: "Multiple Pay", method: null, cls: "bg-slate-900 hover:bg-slate-800 text-white" },
+    { key: "cash", label: "Cash", method: "cash", cls: "bg-emerald-500 hover:bg-emerald-600 text-white" },
+    { key: "upi", label: "UPI / GPAY", method: "gpay", cls: "bg-pink-600 hover:bg-pink-700 text-white" },
 ];
 
-const PAYMENT_METHODS = [
-    { key: "cash", label: "Cash", active: "border-emerald-500 bg-emerald-500 text-white" },
-    { key: "card", label: "Card", active: "border-sky-500 bg-sky-500 text-white" },
-    { key: "gpay", label: "GPay", active: "border-amber-500 bg-amber-500 text-white" },
-    { key: "credit", label: "Credit", active: "border-[#40295C] bg-[#40295C] text-white" },
+const PAYMENT_METHOD_OPTIONS = [
+    { key: "cash", label: "Cash" },
+    { key: "card", label: "Card" },
+    { key: "gpay", label: "GPay" },
+    { key: "credit", label: "Credit" },
 ];
 
 const emptyPayment = { payment_method: "cash", amount: "" };
+const PRODUCT_DISPLAY_LIMIT = 12;
 
 function currency(n) {
     const value = Number(n) || 0;
@@ -119,7 +89,16 @@ function formatDate(dateStr) {
     });
 }
 
+function formatHeaderDate(d) {
+    return (
+        d.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" }) +
+        " " +
+        d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })
+    );
+}
+
 const POS = () => {
+    const navigate = useNavigate();
     const { token, businessLocationId: authBusinessLocationId } = useAuth();
 
     const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
@@ -133,11 +112,16 @@ const POS = () => {
     const [loadingLocations, setLoadingLocations] = useState(false);
     const [selectedLocationId, setSelectedLocationId] = useState(null);
     const businessLocationId = authBusinessLocationId || selectedLocationId;
+    const [tables, setTables] = useState([]);
+    const [loadingTables, setLoadingTables] = useState(false);
+    const [selectedTableId, setSelectedTableId] = useState(null);
 
     const [saleType, setSaleType] = useState("dining");
     const [selectedCategoryId, setSelectedCategoryId] = useState(null);
     const [productSearch, setProductSearch] = useState("");
+    const [productPage, setProductPage] = useState(1);
     const [customerName, setCustomerName] = useState("Walk-In Customer");
+    const [guestCount, setGuestCount] = useState(2);
 
     const [cart, setCart] = useState([]);
     const [discountAmount, setDiscountAmount] = useState(0);
@@ -157,16 +141,30 @@ const POS = () => {
     const [selectedSaleLoading, setSelectedSaleLoading] = useState(false);
     const [cancellingId, setCancellingId] = useState(null);
 
+    const [now, setNow] = useState(new Date());
+
     useEffect(() => {
         loadCategories();
 
-        if (!authBusinessLocationId) {
-            loadLocations();
-        }
+        loadLocations();
     }, []);
 
     useEffect(() => {
+        const t = setInterval(() => setNow(new Date()), 60000);
+        return () => clearInterval(t);
+    }, []);
+
+    useEffect(() => {
+        setProductPage(1);
         if (businessLocationId) loadProducts();
+    }, [businessLocationId]);
+
+    useEffect(() => {
+        if (businessLocationId) {
+            loadTables();
+        } else {
+            setTables([]);
+        }
     }, [businessLocationId]);
 
     async function loadCategories() {
@@ -250,6 +248,29 @@ const POS = () => {
         }
     }
 
+    async function loadTables() {
+        setLoadingTables(true);
+
+        try {
+            const res = await fetch(
+                `${API_BASE_URL}/api/tables?business_location_id=${encodeURIComponent(businessLocationId)}`,
+                { headers: { Accept: "application/json", ...authHeaders } }
+            );
+            const json = await res.json();
+
+            if (!res.ok || !json.success) {
+                throw new Error(json.message || "Failed to load tables");
+            }
+
+            setTables(Array.isArray(json.data) ? json.data : []);
+        } catch (err) {
+            console.error("Load tables error:", err);
+            setTables([]);
+        } finally {
+            setLoadingTables(false);
+        }
+    }
+
     function addToCart(product) {
         setCart((prev) => {
             const existing = prev.find((i) => i.product_id === product.id);
@@ -296,6 +317,12 @@ const POS = () => {
         setDiscountAmount(0);
         setPayments([{ ...emptyPayment }]);
         setCheckoutError(null);
+        setSelectedTableId(null);
+    }
+
+    function selectTable(table) {
+        setSelectedTableId(table.id);
+        setSaleType("dining");
     }
 
     const itemsTotal = useMemo(
@@ -334,6 +361,16 @@ const POS = () => {
             .includes(productSearch.toLowerCase());
         return matchesCategory && matchesSearch;
     });
+
+    const totalProductPages = Math.ceil(filteredProducts.length / PRODUCT_DISPLAY_LIMIT);
+    const visibleProducts = filteredProducts.slice(
+        (productPage - 1) * PRODUCT_DISPLAY_LIMIT,
+        productPage * PRODUCT_DISPLAY_LIMIT
+    );
+
+    useEffect(() => {
+        setProductPage((page) => Math.min(page, Math.max(totalProductPages, 1)));
+    }, [totalProductPages]);
 
     function setSinglePayment(method) {
         setPayments([{ payment_method: method, amount: totalPayable.toFixed(2) }]);
@@ -504,31 +541,32 @@ const POS = () => {
         }
     }
 
+    const currentLocationName =
+        locations.find((l) => String(l.id) === String(businessLocationId))?.name ||
+        (authBusinessLocationId ? "Current Location" : "Select Location");
+
+    const selectedTable = tables.find((t) => t.id === selectedTableId);
+    const orderBadgeLabel =
+        saleType === "dining"
+            ? `DINE-IN${selectedTable ? ` - ${selectedTable.name.replace(/^Table\s*/i, "")}` : ""}`
+            : (SALE_TYPES.find((s) => s.key === saleType)?.label || saleType).toUpperCase();
+
     return (
-        <div className="min-h-screen bg-white text-zinc-800 antialiased">
-            <div className="grid grid-cols-1 gap-4 p-4 lg:grid-cols-[1fr_400px] lg:p-6">
+        <div className="flex flex-col h-screen bg-[#f1f3f7] text-slate-700 text-[11px] font-sans select-none p-2 gap-2 overflow-hidden">
 
-                <div className="flex flex-col gap-4">
-
-                    {!authBusinessLocationId && (
-                        <div className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
-                            <MapPin size={16} className="shrink-0 text-amber-600" />
-                            <div className="flex-1">
-                                <p className="text-xs font-bold text-amber-800">
-                                    Select a business location
-                                </p>
-                                <p className="text-[11px] text-amber-700/80">
-                                    Your account isn't tied to a single location — choose one to
-                                    start billing.
-                                </p>
-                            </div>
+            <header className="bg-white rounded-lg px-3 py-1.5 flex items-center justify-between border border-slate-200 shadow-2xl">
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1.5 text-slate-600 font-medium bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200">
+                        <span className="text-slate-400">Location</span>
+                        <MapPin className="w-3.5 h-3.5 text-indigo-600 ml-1" />
+                        {authBusinessLocationId ? (
+                            <span className="font-semibold text-slate-800">{currentLocationName}</span>
+                        ) : (
                             <select
                                 value={selectedLocationId || ""}
-                                onChange={(e) =>
-                                    setSelectedLocationId(e.target.value || null)
-                                }
+                                onChange={(e) => setSelectedLocationId(e.target.value || null)}
                                 disabled={loadingLocations}
-                                className="rounded-xl border border-amber-300 bg-white px-3.5 py-2 text-sm font-semibold text-zinc-800 outline-none focus:border-[#40295C]"
+                                className="bg-transparent font-semibold text-slate-800 outline-none"
                             >
                                 <option value="" disabled>
                                     {loadingLocations ? "Loading..." : "Select location"}
@@ -539,299 +577,394 @@ const POS = () => {
                                     </option>
                                 ))}
                             </select>
+                        )}
+                    </div>
+
+                    <div className="flex items-center gap-1.5 text-indigo-600 font-medium bg-indigo-50/50 px-2.5 py-1 rounded-md border border-indigo-100">
+                        <Calendar className="w-3.5 h-3.5" />
+                        <span className="font-semibold">{formatHeaderDate(now)}</span>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                    <button className="p-1.5 text-indigo-600 hover:bg-slate-100 rounded-md border border-slate-200 bg-white"><FastForward className="w-4 h-4" /></button>
+                    <button className="p-1.5 text-indigo-600 hover:bg-slate-100 rounded-md border border-slate-200 bg-white"><Columns className="w-4 h-4" /></button>
+                    <button className="p-1.5 text-indigo-600 hover:bg-slate-100 rounded-md border border-slate-200 bg-white"><UserPlus className="w-4 h-4" /></button>
+                    <button className="p-1.5 text-emerald-600 hover:bg-slate-100 rounded-md border border-slate-200 bg-white"><Printer className="w-4 h-4" /></button>
+                    <button className="p-1.5 text-emerald-600 hover:bg-slate-100 rounded-md border border-slate-200 bg-white"><Calculator className="w-4 h-4" /></button>
+                    <button
+                        onClick={() => {
+                            loadProducts();
+                            loadTables();
+                        }}
+                        className="p-1.5 text-rose-500 hover:bg-slate-100 rounded-md border border-slate-200 bg-white"
+                    >
+                        <RotateCcw className="w-4 h-4" />
+                    </button>
+                    <button className="p-1.5 text-slate-500 hover:bg-slate-100 rounded-md border border-slate-200 bg-white"><MoreVertical className="w-4 h-4" /></button>
+                    <button className="ml-2 bg-white border border-indigo-600 text-indigo-600 px-3 py-1.5 rounded-md font-medium flex items-center gap-1.5 hover:bg-indigo-50">
+                        <Plus className="w-3.5 h-3.5" /> Add Expense
+                    </button>
+                </div>
+            </header>
+
+            <div className="flex flex-1 gap-2 overflow-hidden">
+
+                <div className="flex-[2.6] flex flex-col gap-2 overflow-hidden">
+
+                    <div className="flex items-center gap-2">
+                        <div className="flex items-center bg-white rounded-lg border border-slate-200 p-1 flex-1">
+                            <div className="flex items-center gap-2 px-2 text-slate-600 border-r border-slate-200 flex-1">
+                                <User className="w-4 h-4 text-slate-400" />
+                                <input
+                                    value={customerName}
+                                    onChange={(e) => setCustomerName(e.target.value)}
+                                    placeholder="Walk-In Customer"
+                                    className="font-semibold text-slate-800 bg-transparent outline-none w-full"
+                                />
+                            </div>
+                            <button className="p-1 bg-indigo-600 text-white rounded-md ml-1"><Plus className="w-3.5 h-3.5" /></button>
                         </div>
-                    )}
 
-                    <div className="flex flex-col gap-3 rounded-2xl bg-gradient-to-r from-[#40295C]/10 via-[#40295C]/5 to-transparent p-3 sm:flex-row sm:items-center">
-                        <input
-                            type="text"
-                            value={customerName}
-                            onChange={(e) => setCustomerName(e.target.value)}
-                            placeholder="Walk-In Customer"
-                            className="w-full max-w-xs rounded-xl border border-[#40295C]/15 bg-white px-3.5 py-2.5 text-sm font-medium outline-none focus:border-[#40295C] sm:w-56"
-                        />
-
-                        <div className="relative flex-1">
-                            <Search
-                                size={17}
-                                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#40295C]/50"
+                        <div className="flex items-center bg-white rounded-lg border border-slate-200 p-1 px-3 gap-2">
+                            <UserCheck className="w-4 h-4 text-slate-400" />
+                            <input
+                                type="number"
+                                min={1}
+                                value={guestCount}
+                                onChange={(e) => setGuestCount(Math.max(1, Number(e.target.value) || 1))}
+                                className="font-bold text-slate-800 text-xs bg-transparent outline-none w-5 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                             />
+                        </div>
+
+                        <div className="flex items-center bg-white rounded-lg border border-slate-200 px-3 py-1.5 flex-[1.8] justify-between">
                             <input
                                 type="text"
                                 value={productSearch}
-                                onChange={(e) => setProductSearch(e.target.value)}
+                                onChange={(e) => {
+                                    setProductSearch(e.target.value);
+                                    setProductPage(1);
+                                }}
                                 placeholder="Scan barcode or search product"
-                                className="w-full rounded-xl border border-[#40295C]/15 bg-white py-2.5 pl-10 pr-4 text-sm outline-none focus:border-[#40295C]"
+                                className="bg-transparent outline-none w-full text-slate-700 placeholder-slate-400"
                             />
+                            <div className="flex items-center gap-2">
+                                <Scan className="w-4 h-4 text-indigo-600 cursor-pointer" />
+                                <button className="p-1 bg-indigo-600 text-white rounded-md"><Plus className="w-3.5 h-3.5" /></button>
+                            </div>
                         </div>
                     </div>
 
-                    <div className="flex flex-wrap gap-2">
-                        {SALE_TYPES.map(({ key, label, icon: Icon, active: activeCls, idle }) => {
-                            const active = saleType === key;
+                    <div className="flex gap-2">
+                        {SALE_TYPES.map((type, idx) => {
+                            const Icon = type.icon;
+                            const isSelected = saleType === type.key;
                             return (
                                 <button
-                                    key={key}
-                                    onClick={() => setSaleType(key)}
-                                    className={`flex items-center gap-1.5 rounded-xl border px-3.5 py-2 text-xs font-semibold transition-colors ${active ? activeCls : idle
+                                    key={type.key}
+                                    onClick={() => setSaleType(type.key)}
+                                    className={`flex-1 py-2 px-2 rounded-lg border font-semibold flex items-center justify-center gap-1.5 transition-all ${isSelected
+                                        ? "bg-indigo-50 border-indigo-600 text-indigo-700 shadow-sm"
+                                        : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
                                         }`}
                                 >
-                                    <Icon size={14} />
-                                    {label}
+                                    <Icon className={`w-3.5 h-3.5 ${type.color || (isSelected ? "text-indigo-600" : "text-slate-500")}`} />
+                                    <span>{idx + 1} {type.label}</span>
                                 </button>
                             );
                         })}
                     </div>
 
-                    <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                    <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
                         <button
-                            onClick={() => setSelectedCategoryId(null)}
-                            data-active={!selectedCategoryId}
-                            className="shrink-0 rounded-full bg-zinc-100 px-4 py-2 text-xs font-semibold text-zinc-600 hover:bg-zinc-200 data-[active=true]:bg-[#40295C] data-[active=true]:text-white"
+                            onClick={() => {
+                                setSelectedCategoryId(null);
+                                setProductPage(1);
+                            }}
+                            className={`px-3 py-1.5 rounded-md font-semibold text-[10px] transition-all whitespace-nowrap ${!selectedCategoryId
+                                ? "bg-indigo-600 text-white shadow-sm"
+                                : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+                                }`}
                         >
-                            All Categories
+                            Categories
                         </button>
-                        {categories.map((cat, idx) => (
-                            <button
-                                key={cat.id}
-                                onClick={() => setSelectedCategoryId(cat.id)}
-                                data-active={selectedCategoryId === cat.id}
-                                className={`shrink-0 rounded-full px-4 py-2 text-xs font-semibold transition-colors ${CATEGORY_COLORS[idx % CATEGORY_COLORS.length]
-                                    }`}
-                            >
-                                {cat.name}
-                            </button>
-                        ))}
+                        {categories.map((cat) => {
+                            const isSelected = selectedCategoryId === cat.id;
+                            return (
+                                <button
+                                    key={cat.id}
+                                    onClick={() => {
+                                        setSelectedCategoryId(cat.id);
+                                        setProductPage(1);
+                                    }}
+                                    className={`px-3 py-1.5 rounded-md font-semibold text-[10px] transition-all whitespace-nowrap ${isSelected
+                                        ? "bg-indigo-600 text-white shadow-sm"
+                                        : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+                                        }`}
+                                >
+                                    {cat.name}
+                                </button>
+                            );
+                        })}
+                        <ChevronRight className="w-4 h-4 text-slate-400 flex-shrink-0 cursor-pointer" />
                     </div>
 
-                    <div className="min-h-[300px] flex-1">
-                        {!businessLocationId ? (
-                            <p className="p-6 text-sm font-medium text-zinc-400">
-                                Select a business location above to load products.
-                            </p>
-                        ) : loadingProducts ? (
-                            <p className="p-6 text-sm font-medium text-zinc-400">
-                                Loading products...
-                            </p>
-                        ) : loadError ? (
-                            <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-600">
-                                {loadError}
-                            </div>
-                        ) : filteredProducts.length === 0 ? (
-                            <p className="p-6 text-sm font-medium text-zinc-400">
-                                No products found.
-                            </p>
-                        ) : (
-                            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
-                                {filteredProducts.map((product) => (
-                                    <button
-                                        key={product.id}
-                                        onClick={() => addToCart(product)}
-                                        className="group flex flex-col overflow-hidden rounded-2xl border border-zinc-200/70 bg-white text-left transition-all hover:-translate-y-0.5 hover:shadow-md"
-                                    >
-                                        <div className="aspect-square w-full overflow-hidden bg-zinc-100">
-                                            {product.image ? (
-                                                <img
-                                                    src={getProductImageUrl(product.image)}
-                                                    alt={product.name}
-                                                    onError={(e) => {
-                                                        e.currentTarget.style.display = "none";
-                                                        e.currentTarget.nextSibling?.style &&
-                                                            (e.currentTarget.nextSibling.style.display = "flex");
-                                                    }}
-                                                    className="h-full w-full object-cover transition-transform group-hover:scale-105"
-                                                />
-                                            ) : null}
-                                            <div
-                                                className={`flex h-full w-full items-center justify-center text-zinc-300 ${product.image ? "hidden" : "flex"}`}
-                                            >
-                                                <ShoppingBag size={28} />
-                                            </div>
+                    {!businessLocationId ? (
+                        <div className="flex-1 bg-white rounded-lg border border-slate-200 p-4 flex items-center justify-center text-slate-400 font-medium">
+                            Select a business location above to load products.
+                        </div>
+                    ) : loadingProducts ? (
+                        <div className="flex-1 bg-white rounded-lg border border-slate-200 p-4 flex items-center justify-center text-slate-400 font-medium">
+                            Loading products...
+                        </div>
+                    ) : loadError ? (
+                        <div className="flex-1 bg-white rounded-lg border border-rose-200 p-4 flex items-center justify-center text-rose-600 font-medium">
+                            {loadError}
+                        </div>
+                    ) : filteredProducts.length === 0 ? (
+                        <div className="flex-1 bg-white rounded-lg border border-slate-200 p-4 flex items-center justify-center text-slate-400 font-medium">
+                            No products found.
+                        </div>
+                    ) : (
+                        <div className="flex-1 bg-white rounded-lg border border-slate-200 p-2.5 overflow-y-auto grid grid-cols-4 gap-2.5 content-start">
+                            {visibleProducts.map((product) => (
+                                <div
+                                    key={product.id}
+                                    onClick={() => addToCart(product)}
+                                    className="border border-slate-200/60 rounded-xl p-2 bg-white hover:border-indigo-200 hover:shadow-md transition-all cursor-pointer flex flex-col justify-between"
+                                >
+                                    <div className="w-full h-20 rounded-lg mb-2 overflow-hidden bg-slate-100 flex items-center justify-center">
+                                        {product.image ? (
+                                            <img
+                                                src={getProductImageUrl(product.image)}
+                                                alt={product.name}
+                                                onError={(e) => {
+                                                    e.currentTarget.style.display = "none";
+                                                    e.currentTarget.nextSibling?.style &&
+                                                        (e.currentTarget.nextSibling.style.display = "flex");
+                                                }}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        ) : null}
+                                        <div className={`items-center justify-center text-slate-300 ${product.image ? "hidden" : "flex"}`}>
+                                            <ShoppingBag className="w-6 h-6" />
                                         </div>
-                                        <div className="p-3">
-                                            <p className="truncate text-sm font-semibold text-zinc-900">
-                                                {product.name}
-                                            </p>
-                                            <span className="mt-1.5 inline-block rounded-full bg-[#40295C]/10 px-2 py-0.5 text-[11px] font-bold text-[#40295C]">
-                                                {currency(product.default_selling_price_inc_tax)}
-                                            </span>
+                                    </div>
+                                    <div>
+                                        <div className="font-bold text-slate-800 text-[11px] truncate">{product.name}</div>
+                                        <div className="text-slate-600 font-semibold text-[10px] mt-0.5">
+                                            {currency(product.default_selling_price_inc_tax)}
                                         </div>
-                                    </button>
-                                ))}
-                            </div>
-                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    <div className="flex justify-center items-center gap-1.5 py-0.5">
+                        {totalProductPages > 1 && Array.from({ length: totalProductPages }, (_, index) => (
+                            <button
+                                key={index}
+                                type="button"
+                                aria-label={`Show product page ${index + 1}`}
+                                onClick={() => setProductPage(index + 1)}
+                                className={`rounded-full transition-all ${productPage === index + 1
+                                    ? "h-2 w-2 bg-indigo-600"
+                                    : "h-1.5 w-1.5 bg-slate-300 hover:bg-slate-400"
+                                    }`}
+                            />
+                        ))}
                     </div>
                 </div>
 
-                <div className="flex flex-col gap-4">
-                    <div className="flex flex-1 flex-col rounded-2xl border border-zinc-200/70 bg-white p-4">
-                        <div className="flex items-center justify-between">
-                            <h2 className="text-sm font-bold text-zinc-900">Current Order</h2>
-                            <span
-                                className={`rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide ${SALE_TYPE_BADGE[saleType] || "bg-[#40295C]/10 text-[#40295C]"
-                                    }`}
-                            >
-                                {saleType}
-                            </span>
+                <div className="flex-1 bg-white rounded-lg border border-slate-200 p-2.5 flex flex-col justify-between overflow-hidden">
+                    <div className="flex items-center justify-between mb-1">
+                        <div>
+                            <span className="font-bold text-indigo-950 uppercase tracking-wider text-[10px]">RUNNING TABLES</span>
+                            <p className="mt-0.5 text-[9px] font-semibold text-slate-400">{currentLocationName}</p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => navigate("/admin-table")}
+                            className="text-indigo-600 hover:underline font-semibold text-[10px]"
+                        >
+                            View All
+                        </button>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto space-y-2 pr-0.5 my-1">
+                        {loadingTables ? (
+                            <p className="text-slate-400 font-medium py-3">Loading tables...</p>
+                        ) : tables.length === 0 ? (
+                            <p className="text-slate-400 font-medium py-3">No tables at this location.</p>
+                        ) : (
+                            tables.map((table) => {
+                                const style = TABLE_STATUS_STYLES[table.status] || TABLE_STATUS_STYLES.available;
+                                return (
+                                    <div
+                                        key={table.id}
+                                        onClick={() => selectTable(table)}
+                                        className={`p-2.5 rounded-lg border flex flex-col gap-1.5 relative cursor-pointer transition-all hover:-translate-y-0.5 ${style.bg} ${selectedTableId === table.id ? "ring-2 ring-indigo-600" : ""
+                                            }`}
+                                    >
+                                        <div className="flex justify-between items-start">
+                                            <div className="flex items-center gap-2">
+                                                <div className="p-1.5 rounded-md bg-white border border-slate-200/50">
+                                                    <Utensils className="w-3.5 h-3.5 text-slate-600" />
+                                                </div>
+                                                <div>
+                                                    <div className="font-bold text-slate-900 text-[11px]">{table.name}</div>
+                                                    <div className="text-[9px] text-slate-400">{table.capacity || "-"} Seater</div>
+                                                </div>
+                                            </div>
+                                            {style.badge && (
+                                                <span className={`text-[8px] px-1.5 py-0.5 rounded font-bold uppercase tracking-tight ${style.badge.style}`}>
+                                                    {style.badge.label}
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <div className="flex justify-between items-center text-[10px] mt-1 pt-1 border-t border-slate-100/50">
+                                            <span className={`font-bold ${style.amount}`}>{currency(table.running_amount ?? 0)}</span>
+                                            <div className="flex items-center gap-1 text-slate-500 text-[9px]">
+                                                <Clock className="w-3 h-3" />
+                                                <span>{table.running_time || "00:00:00"}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        )}
+                    </div>
+
+                </div>
+
+                <div className="flex-[1.2] bg-white rounded-lg border border-slate-200 p-2.5 flex flex-col justify-between overflow-hidden">
+                    <div className="flex flex-col overflow-hidden">
+                        <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                            <span className="font-bold text-slate-800 text-xs">Current Order</span>
+                            <div className="flex items-center gap-2">
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${SALE_TYPE_BADGE[saleType] || "bg-indigo-50 text-indigo-600"}`}>
+                                    {orderBadgeLabel}
+                                </span>
+                                <button onClick={clearOrder} className="text-rose-400 hover:text-rose-600"><Trash2 className="w-3.5 h-3.5" /></button>
+                            </div>
                         </div>
 
-                        <div className="mt-3 flex-1 divide-y divide-zinc-100 overflow-y-auto">
+                        {cart.length > 0 && (
+                            <div className="grid grid-cols-12 text-[10px] font-bold text-slate-400 py-1.5 border-b border-slate-100">
+                                <div className="col-span-5">Item</div>
+                                <div className="col-span-3 text-center">Qty</div>
+                                <div className="col-span-2 text-right">Price</div>
+                                <div className="col-span-2 text-right">Total</div>
+                            </div>
+                        )}
+
+                        <div className="space-y-2 py-2 max-h-48 overflow-y-auto">
                             {cart.length === 0 ? (
-                                <p className="py-8 text-center text-xs font-medium text-zinc-400">
-                                    No items added yet.
-                                </p>
+                                <p className="text-center text-slate-400 font-medium py-6">No items added yet.</p>
                             ) : (
                                 cart.map((item) => (
-                                    <div
-                                        key={item.product_id}
-                                        className="flex items-center justify-between gap-2 py-2.5"
-                                    >
-                                        <div className="min-w-0 flex-1">
-                                            <p className="truncate text-xs font-semibold text-zinc-900">
-                                                {item.name}
-                                            </p>
-                                            <p className="text-[11px] text-zinc-400">
-                                                {currency(item.unit_price_inc_tax)} each
-                                            </p>
-                                        </div>
-
-                                        <div className="flex items-center gap-1.5">
+                                    <div key={item.product_id} className="grid grid-cols-12 text-[10px] items-center text-slate-700">
+                                        <div className="col-span-5 font-bold text-slate-800 truncate">{item.name}</div>
+                                        <div className="col-span-3 flex items-center justify-center gap-1 bg-slate-50 rounded border border-slate-200 py-0.5">
                                             <button
                                                 onClick={() => updateQuantity(item.product_id, -1)}
-                                                className="flex h-6 w-6 items-center justify-center rounded-full border border-[#40295C]/30 text-[#40295C] hover:bg-[#40295C]/10"
+                                                className="text-slate-400 hover:text-slate-600 px-1 font-bold"
                                             >
-                                                <Minus size={12} />
+                                                <Minus className="w-2.5 h-2.5" />
                                             </button>
-                                            <span className="w-5 text-center text-xs font-bold">
-                                                {item.quantity}
-                                            </span>
+                                            <span className="font-bold text-slate-800">{item.quantity}</span>
                                             <button
                                                 onClick={() => updateQuantity(item.product_id, 1)}
-                                                className="flex h-6 w-6 items-center justify-center rounded-full border border-[#40295C]/30 text-[#40295C] hover:bg-[#40295C]/10"
+                                                className="text-slate-400 hover:text-slate-600 px-1 font-bold"
                                             >
-                                                <Plus size={12} />
+                                                <Plus className="w-2.5 h-2.5" />
                                             </button>
                                         </div>
-
-                                        <p className="w-16 text-right text-xs font-bold text-zinc-900">
-                                            {currency(item.unit_price_inc_tax * item.quantity)}
-                                        </p>
-
-                                        <button
-                                            onClick={() => removeFromCart(item.product_id)}
-                                            className="text-zinc-300 hover:text-rose-500"
-                                        >
-                                            <X size={14} />
-                                        </button>
+                                        <div className="col-span-2 text-right text-slate-500 font-medium">
+                                            ₹{item.unit_price_inc_tax.toFixed(0)}
+                                        </div>
+                                        <div className="col-span-2 text-right font-bold text-slate-800 flex items-center justify-end gap-1">
+                                            <span>₹{(item.unit_price_inc_tax * item.quantity).toFixed(0)}</span>
+                                            <button
+                                                onClick={() => removeFromCart(item.product_id)}
+                                                className="text-rose-400 hover:text-rose-600 text-[10px]"
+                                            >
+                                                ×
+                                            </button>
+                                        </div>
                                     </div>
                                 ))
                             )}
                         </div>
+                    </div>
 
-                        <div className="mt-3 space-y-1.5 border-t border-zinc-100 pt-3 text-xs">
-                            <div className="flex items-center justify-between">
-                                <span className="text-zinc-500">
-                                    Items Total ({cart.reduce((n, i) => n + i.quantity, 0)})
-                                </span>
-                                <span className="font-semibold text-zinc-900">
-                                    {currency(itemsTotal)}
-                                </span>
-                            </div>
-
-                            <div className="flex items-center justify-between">
-                                <span className="text-zinc-500">Discount</span>
+                    <div className="border-t border-slate-100 pt-2 space-y-1 text-[10px]">
+                        <div className="flex justify-between text-slate-500">
+                            <span>Items Total ({cart.reduce((n, i) => n + i.quantity, 0)})</span>
+                            <span className="font-semibold text-slate-700">{currency(itemsTotal)}</span>
+                        </div>
+                        <div className="flex justify-between text-slate-500 items-center">
+                            <span className="flex items-center gap-1">
+                                Discount <Edit2 className="w-2.5 h-2.5 text-indigo-600" />
+                            </span>
+                            <input
+                                type="number"
+                                min={0}
+                                value={discountAmount}
+                                onChange={(e) => setDiscountAmount(Number(e.target.value) || 0)}
+                                className="w-14 text-right font-semibold text-slate-700 bg-transparent outline-none border-b border-transparent focus:border-indigo-300"
+                            />
+                        </div>
+                        <div className="flex justify-between text-slate-500 items-center">
+                            <span className="flex items-center gap-1">
+                                Tax (GST
                                 <input
                                     type="number"
                                     min={0}
-                                    value={discountAmount}
-                                    onChange={(e) => setDiscountAmount(Number(e.target.value) || 0)}
-                                    className="w-20 rounded-lg border border-zinc-200 px-2 py-1 text-right text-xs font-semibold outline-none focus:border-[#40295C]"
+                                    value={taxPercent}
+                                    onChange={(e) => setTaxPercent(Number(e.target.value) || 0)}
+                                    className="w-6 text-center bg-transparent outline-none border-b border-transparent focus:border-indigo-300"
                                 />
-                            </div>
+                                %)
+                            </span>
+                            <span className="font-semibold text-slate-700">{currency(taxAmount)}</span>
+                        </div>
+                        <div className="flex justify-between text-slate-500">
+                            <span>Round Off</span>
+                            <span className="font-semibold text-slate-700">{currency(roundOffAmount)}</span>
+                        </div>
 
-                            <div className="flex items-center justify-between">
-                                <span className="text-zinc-500">
-                                    Tax (GST{" "}
-                                    <input
-                                        type="number"
-                                        min={0}
-                                        value={taxPercent}
-                                        onChange={(e) => setTaxPercent(Number(e.target.value) || 0)}
-                                        className="w-10 rounded border border-zinc-200 px-1 py-0.5 text-center text-[11px]"
-                                    />
-                                    %)
-                                </span>
-                                <span className="font-semibold text-zinc-900">
-                                    {currency(taxAmount)}
-                                </span>
-                            </div>
-
-                            <div className="flex items-center justify-between">
-                                <span className="text-zinc-500">Round Off</span>
-                                <span className="font-semibold text-zinc-900">
-                                    {currency(roundOffAmount)}
-                                </span>
-                            </div>
-
-                            <div className="flex items-center justify-between rounded-xl bg-gradient-to-r from-[#40295C] to-[#5b3a7d] px-3 py-2.5 text-sm">
-                                <span className="font-bold text-white/90">Total Payable</span>
-                                <span className="font-extrabold text-white">
-                                    {currency(totalPayable)}
-                                </span>
-                            </div>
+                        <div className="bg-indigo-50/60 p-2 rounded-lg flex justify-between items-center border border-indigo-100/50 my-1.5">
+                            <span className="font-bold text-indigo-900 text-xs">Total Payable</span>
+                            <span className="font-extrabold text-indigo-700 text-sm">{currency(totalPayable)}</span>
                         </div>
 
                         {checkoutError && (
-                            <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] font-medium text-rose-600">
+                            <div className="rounded-lg border border-rose-200 bg-rose-50 px-2 py-1.5 text-rose-600 font-medium">
                                 {checkoutError}
                             </div>
                         )}
 
                         {lastSale && (
-                            <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] font-medium text-emerald-700">
+                            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1.5 text-emerald-700 font-medium">
                                 {lastSale.invoice_no || `Sale #${lastSale.id}`} created successfully.
                             </div>
                         )}
 
-                        <div className="mt-3 grid grid-cols-2 gap-2">
-                            {PAYMENT_METHODS.map((m) => (
-                                <button
-                                    key={m.key}
-                                    onClick={() => setSinglePayment(m.key)}
-                                    className={`rounded-lg border py-2 text-[11px] font-semibold transition-colors ${payments.length === 1 && payments[0].payment_method === m.key
-                                        ? m.active
-                                        : "border-zinc-200 text-zinc-600 hover:bg-zinc-50"
-                                        }`}
-                                >
-                                    {m.label}
-                                </button>
-                            ))}
-                            <button
-                                onClick={enableMultiplePay}
-                                className={`col-span-2 rounded-lg border py-2 text-[11px] font-semibold transition-colors ${payments.length > 1
-                                    ? "border-transparent bg-gradient-to-r from-[#40295C] to-[#5b3a7d] text-white"
-                                    : "border-zinc-200 text-zinc-600 hover:bg-zinc-50"
-                                    }`}
-                            >
-                                Multiple Pay
-                            </button>
-                        </div>
-
                         {payments.length > 1 && (
-                            <div className="mt-2 space-y-2">
+                            <div className="space-y-1.5 border-t border-slate-100 pt-1.5">
+                                <p className="text-[9px] font-bold uppercase tracking-wide text-slate-400">Split Payment</p>
                                 {payments.map((p, idx) => (
-                                    <div key={idx} className="flex items-center gap-2">
+                                    <div key={idx} className="flex items-center gap-1.5">
                                         <select
                                             value={p.payment_method}
-                                            onChange={(e) =>
-                                                updatePaymentRow(idx, "payment_method", e.target.value)
-                                            }
-                                            className="rounded-lg border border-zinc-200 px-2 py-1.5 text-[11px]"
+                                            onChange={(e) => updatePaymentRow(idx, "payment_method", e.target.value)}
+                                            className="rounded border border-slate-200 px-1.5 py-1 text-[10px]"
                                         >
-                                            {PAYMENT_METHODS.map((m) => (
-                                                <option key={m.key} value={m.key}>
-                                                    {m.label}
-                                                </option>
+                                            {PAYMENT_METHOD_OPTIONS.map((m) => (
+                                                <option key={m.key} value={m.key}>{m.label}</option>
                                             ))}
                                         </select>
                                         <input
@@ -840,20 +973,14 @@ const POS = () => {
                                             value={p.amount}
                                             onChange={(e) => updatePaymentRow(idx, "amount", e.target.value)}
                                             placeholder="Amount"
-                                            className="flex-1 rounded-lg border border-zinc-200 px-2 py-1.5 text-[11px]"
+                                            className="flex-1 rounded border border-slate-200 px-1.5 py-1 text-[10px]"
                                         />
-                                        <button
-                                            onClick={() => removePaymentRow(idx)}
-                                            className="text-zinc-300 hover:text-rose-500"
-                                        >
-                                            <X size={13} />
+                                        <button onClick={() => removePaymentRow(idx)} className="text-slate-300 hover:text-rose-500">
+                                            <X className="w-3 h-3" />
                                         </button>
                                     </div>
                                 ))}
-                                <button
-                                    onClick={addPaymentRow}
-                                    className="text-[11px] font-semibold text-[#40295C]"
-                                >
+                                <button onClick={addPaymentRow} className="text-[10px] font-semibold text-indigo-600">
                                     + Add payment
                                 </button>
                             </div>
@@ -862,84 +989,100 @@ const POS = () => {
                         <button
                             onClick={handleCheckout}
                             disabled={saving}
-                            className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#40295C] to-[#5b3a7d] py-3 text-sm font-bold text-white shadow-sm transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg flex items-center justify-center gap-2 shadow-sm transition-colors text-xs disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                            {saving ? "Processing..." : "Proceed to Pay"}
-                            {!saving && <ArrowRight size={16} />}
-                        </button>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                        {/* <button className="flex flex-1 flex-col items-center gap-1 rounded-xl border border-orange-200 bg-orange-50 py-2.5 text-[11px] font-semibold text-orange-700 hover:bg-orange-100">
-                            <Pause size={15} />
-                            Suspend
-                        </button>
-                        <button className="flex flex-1 flex-col items-center gap-1 rounded-xl border border-rose-200 bg-rose-50 py-2.5 text-[11px] font-semibold text-rose-700 hover:bg-rose-100">
-                            <Lock size={15} />
-                            Hold
-                        </button>
-                        <button className="flex flex-1 flex-col items-center gap-1 rounded-xl border border-indigo-200 bg-indigo-50 py-2.5 text-[11px] font-semibold text-indigo-700 hover:bg-indigo-100">
-                            <Receipt size={15} />
-                            KOT
-                        </button> */}
-                        <button
-                            onClick={openHistory}
-                            className="flex flex-1 flex-col items-center gap-1 rounded-xl border border-[#40295C]/20 bg-[#40295C]/5 py-2.5 text-[11px] font-semibold text-[#40295C] hover:bg-[#40295C]/10"
-                        >
-                            <History size={15} />
-                            Recent Transaction
+                            <span>{saving ? "Processing..." : "Proceed to Pay"}</span>
+                            {!saving && <ArrowRight className="w-4 h-4" />}
                         </button>
                     </div>
                 </div>
+
             </div>
+
+            <footer className="flex items-center justify-between gap-2 pt-0.5">
+
+                <div className="flex items-center gap-1.5">
+                    <button className="bg-white border border-slate-200 hover:bg-slate-50 p-1.5 rounded-lg flex flex-col items-center justify-center text-rose-500 w-14 h-11">
+                        <Pause className="w-3.5 h-3.5" />
+                        <span className="text-[8px] font-semibold mt-0.5">Suspend</span>
+                    </button>
+                    <button className="bg-white border border-slate-200 hover:bg-slate-50 p-1.5 rounded-lg flex flex-col items-center justify-center text-sky-500 w-14 h-11">
+                        <Lock className="w-3.5 h-3.5" />
+                        <span className="text-[8px] font-semibold mt-0.5">Hold</span>
+                    </button>
+                    <button className="bg-white border border-slate-200 hover:bg-slate-50 p-1.5 rounded-lg flex flex-col items-center justify-center text-emerald-600 w-14 h-11">
+                        <FileText className="w-3.5 h-3.5" />
+                        <span className="text-[8px] font-semibold mt-0.5">KOT</span>
+                    </button>
+                </div>
+
+                <div className="flex items-center gap-1.5 flex-1 justify-center max-w-xl">
+                    {PAYMENT_BUTTONS.map((btn) => {
+                        const isActive =
+                            btn.method && payments.length === 1 && payments[0].payment_method === btn.method;
+                        return (
+                            <button
+                                key={btn.key}
+                                onClick={() => (btn.method ? setSinglePayment(btn.method) : enableMultiplePay())}
+                                className={`flex-1 py-2.5 font-bold rounded-lg text-center shadow-sm text-[11px] transition-colors ${btn.cls} ${isActive || (!btn.method && payments.length > 1) ? "ring-2 ring-offset-1 ring-indigo-300" : ""
+                                    }`}
+                            >
+                                {btn.label}
+                            </button>
+                        );
+                    })}
+                </div>
+
+                <div className="flex items-center gap-2">
+                    <div className="bg-emerald-50 border border-emerald-200/80 rounded-lg px-3 py-0.5 flex flex-col items-end">
+                        <span className="text-[8px] text-emerald-700 font-bold uppercase tracking-tight">Total Payable</span>
+                        <span className="text-xs font-black text-emerald-600">{currency(totalPayable)}</span>
+                    </div>
+                    <button
+                        onClick={openHistory}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2.5 rounded-lg font-bold flex items-center gap-1.5 shadow-sm text-[11px]"
+                    >
+                        <Clock className="w-3.5 h-3.5" />
+                        <span>Recent Transactions</span>
+                    </button>
+                </div>
+
+            </footer>
 
             {showHistory && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-                    <div className="flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
-                        <div className="flex items-center justify-between border-b border-zinc-100 p-4">
-                            <h2 className="text-sm font-bold text-zinc-900">
-                                Recent Transactions
-                            </h2>
-                            <button
-                                onClick={() => setShowHistory(false)}
-                                className="text-zinc-400 hover:text-zinc-700"
-                            >
-                                <X size={18} />
+                    <div className="flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl text-[11px]">
+                        <div className="flex items-center justify-between border-b border-slate-100 p-4">
+                            <h2 className="text-sm font-bold text-slate-900">Recent Transactions</h2>
+                            <button onClick={() => setShowHistory(false)} className="text-slate-400 hover:text-slate-700">
+                                <X className="w-4.5 h-4.5" />
                             </button>
                         </div>
 
                         <div className="flex flex-1 overflow-hidden">
-                            <div className="w-1/2 overflow-y-auto border-r border-zinc-100">
+                            <div className="w-1/2 overflow-y-auto border-r border-slate-100">
                                 {historyLoading ? (
-                                    <p className="p-4 text-xs font-medium text-zinc-400">
-                                        Loading sales...
-                                    </p>
+                                    <p className="p-4 font-medium text-slate-400">Loading sales...</p>
                                 ) : historyError ? (
-                                    <p className="p-4 text-xs font-medium text-rose-600">
-                                        {historyError}
-                                    </p>
+                                    <p className="p-4 font-medium text-rose-600">{historyError}</p>
                                 ) : salesList.length === 0 ? (
-                                    <p className="p-4 text-xs font-medium text-zinc-400">
-                                        No sales found.
-                                    </p>
+                                    <p className="p-4 font-medium text-slate-400">No sales found.</p>
                                 ) : (
-                                    <div className="divide-y divide-zinc-100">
+                                    <div className="divide-y divide-slate-100">
                                         {salesList.map((sale) => (
                                             <button
                                                 key={sale.id}
                                                 onClick={() => viewSale(sale.id)}
-                                                className={`flex w-full items-center justify-between p-3 text-left hover:bg-zinc-50 ${selectedSale?.id === sale.id ? "bg-zinc-50" : ""
+                                                className={`flex w-full items-center justify-between p-3 text-left hover:bg-slate-50 ${selectedSale?.id === sale.id ? "bg-slate-50" : ""
                                                     }`}
                                             >
                                                 <div>
-                                                    <p className="text-xs font-bold text-zinc-900">
-                                                        {`Sale #${sale.sale_number}`}
-                                                    </p>
-                                                    <p className="text-[11px] text-zinc-400">
+                                                    <p className="font-bold text-slate-900">{`Sale #${sale.sale_number}`}</p>
+                                                    <p className="text-slate-400">
                                                         {sale.customer_name || "Walk-In Customer"} · {sale.sale_type} · {sale.business_location_name || "-"}
                                                     </p>
                                                 </div>
-                                                <ChevronRight size={14} className="text-zinc-300" />
+                                                <ChevronRight className="w-3.5 h-3.5 text-slate-300" />
                                             </button>
                                         ))}
                                     </div>
@@ -948,112 +1091,73 @@ const POS = () => {
 
                             <div className="w-1/2 overflow-y-auto p-4">
                                 {selectedSaleLoading ? (
-                                    <p className="text-xs font-medium text-zinc-400">Loading...</p>
+                                    <p className="font-medium text-slate-400">Loading...</p>
                                 ) : !selectedSale ? (
-                                    <div className="flex h-full items-center justify-center text-center text-xs font-medium text-zinc-400">
+                                    <div className="flex h-full items-center justify-center text-center font-medium text-slate-400">
                                         <div>
-                                            <ChevronLeft className="mx-auto mb-2 text-zinc-300" size={20} />
+                                            <ChevronLeft className="mx-auto mb-2 text-slate-300 w-5 h-5" />
                                             Select a sale to view details
                                         </div>
                                     </div>
                                 ) : (
                                     <div className="space-y-3">
                                         <div>
-                                            <p className="text-sm font-bold text-zinc-900">
-                                                Sale Details
-                                            </p>
-                                            <p className="mt-0.5 text-xs text-zinc-500">
-                                                {formatDate(selectedSale.created_at)}
-                                            </p>
+                                            <p className="text-sm font-bold text-slate-900">Sale Details</p>
+                                            <p className="mt-0.5 text-slate-500">{formatDate(selectedSale.created_at)}</p>
                                         </div>
 
-                                        <div className="grid grid-cols-2 gap-x-3 gap-y-2 rounded-xl border border-zinc-100 bg-zinc-50/50 p-3 text-xs">
+                                        <div className="grid grid-cols-2 gap-x-3 gap-y-2 rounded-xl border border-slate-100 bg-slate-50/50 p-3">
                                             <div className="col-span-2">
-                                                <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
-                                                    Sale ID
-                                                </p>
-                                                <p className="break-all font-semibold text-zinc-800">
-                                                    {selectedSale.id}
-                                                </p>
+                                                <p className="font-semibold uppercase tracking-wide text-slate-400 text-[9px]">Sale ID</p>
+                                                <p className="break-all font-semibold text-slate-800">{selectedSale.id}</p>
                                             </div>
                                             <div>
-                                                <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
-                                                    Customer
-                                                </p>
-                                                <p className="font-semibold text-zinc-800">
-                                                    {selectedSale.customer_name}
-                                                </p>
+                                                <p className="font-semibold uppercase tracking-wide text-slate-400 text-[9px]">Customer</p>
+                                                <p className="font-semibold text-slate-800">{selectedSale.customer_name}</p>
                                             </div>
                                             <div>
-                                                <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
-                                                    Sale Type
-                                                </p>
-                                                <p className="font-semibold capitalize text-zinc-800">
-                                                    {selectedSale.sale_type}
-                                                </p>
+                                                <p className="font-semibold uppercase tracking-wide text-slate-400 text-[9px]">Sale Type</p>
+                                                <p className="font-semibold capitalize text-slate-800">{selectedSale.sale_type}</p>
                                             </div>
                                             <div>
-                                                <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
-                                                    Business Location
-                                                </p>
-                                                <p className="font-semibold text-zinc-800">
-                                                    {selectedSale.business_location_name || "-"}
-                                                </p>
+                                                <p className="font-semibold uppercase tracking-wide text-slate-400 text-[9px]">Business Location</p>
+                                                <p className="font-semibold text-slate-800">{selectedSale.business_location_name || "-"}</p>
                                             </div>
                                             <div>
-                                                <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
-                                                    Payment Method
-                                                </p>
-                                                <p className="font-semibold capitalize text-zinc-800">
-                                                    {(selectedSale.payments || [])
-                                                        .map((p) => p.payment_method)
-                                                        .join(", ") || "-"}
+                                                <p className="font-semibold uppercase tracking-wide text-slate-400 text-[9px]">Payment Method</p>
+                                                <p className="font-semibold capitalize text-slate-800">
+                                                    {(selectedSale.payments || []).map((p) => p.payment_method).join(", ") || "-"}
                                                 </p>
                                             </div>
                                         </div>
 
-                                        <div className="divide-y divide-zinc-100 rounded-xl border border-zinc-100">
+                                        <div className="divide-y divide-slate-100 rounded-xl border border-slate-100">
                                             {(selectedSale.items || []).map((item, idx) => (
-                                                <div
-                                                    key={idx}
-                                                    className="flex items-center justify-between p-2.5 text-xs"
-                                                >
-                                                    <span className="text-zinc-700">
-                                                        {item.product_name || `Product #${item.product_id}`} ×{" "}
-                                                        {item.quantity}
+                                                <div key={idx} className="flex items-center justify-between p-2.5">
+                                                    <span className="text-slate-700">
+                                                        {item.product_name || `Product #${item.product_id}`} × {item.quantity}
                                                     </span>
-                                                    <span className="font-semibold text-zinc-900">
+                                                    <span className="font-semibold text-slate-900">
                                                         {currency(item.unit_price_inc_tax * item.quantity)}
                                                     </span>
                                                 </div>
                                             ))}
                                         </div>
 
-                                        <div className="text-xs">
+                                        <div>
                                             <div className="flex justify-between">
-                                                <span className="text-zinc-500">Discount</span>
+                                                <span className="text-slate-500">Discount</span>
                                                 <span>{currency(selectedSale.discount_amount)}</span>
                                             </div>
                                             <div className="flex justify-between">
-                                                <span className="text-zinc-500">Tax</span>
+                                                <span className="text-slate-500">Tax</span>
                                                 <span>{currency(selectedSale.order_tax_amount)}</span>
                                             </div>
-                                            <div className="flex justify-between font-bold text-zinc-900">
+                                            <div className="flex justify-between font-bold text-slate-900">
                                                 <span>Total</span>
                                                 <span>{currency(selectedSale.total_amount)}</span>
                                             </div>
                                         </div>
-
-                                        {/* <button
-                                            onClick={() => cancelSale(selectedSale.id)}
-                                            disabled={cancellingId === selectedSale.id}
-                                            className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-rose-200 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 disabled:opacity-60"
-                                        >
-                                            <Trash2 size={13} />
-                                            {cancellingId === selectedSale.id
-                                                ? "Cancelling..."
-                                                : "Cancel Sale"}
-                                        </button> */}
                                     </div>
                                 )}
                             </div>

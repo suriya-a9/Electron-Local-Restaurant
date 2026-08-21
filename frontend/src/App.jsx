@@ -22,6 +22,7 @@ import POS from "./pages/client/Pos";
 import Sales from "./pages/client/Sales";
 import KotPrinterSettings from "./pages/client/KotPrinterSettings";
 import POSDashboard from "./pages/client/StaticPOS";
+import Tables from "./pages/client/Tables";
 
 const CLIENT_ROLES = ["admin", "manager", "cashier", "waiter"];
 
@@ -87,7 +88,8 @@ function App() {
                     <Route path="/admin-subcategories" element={<ClientPermission><SubCategories /></ClientPermission>} />
                     <Route path="/admin-unit-types" element={<ClientPermission><Units /></ClientPermission>} />
                     <Route path="/admin-product" element={<ClientPermission><Products /></ClientPermission>} />
-                    <Route path="/admin-pos" element={<ClientPermission><POS /></ClientPermission>} />
+                    <Route path="/admin-table" element={<ClientPermission><Tables /></ClientPermission>} />
+                    {/* <Route path="/admin-pos" element={<ClientPermission><POS /></ClientPermission>} /> */}
                     <Route path="/admin-sales" element={<ClientPermission><Sales /></ClientPermission>} />
                     <Route path="/admin-kot-settings" element={<ClientPermission><KotPrinterSettings /></ClientPermission>} />
                 </Route>
@@ -99,7 +101,7 @@ function App() {
                         </PrivateRoute>
                     }
                 >
-                    <Route path="/static-pos" element={<ClientPermission><POSDashboard /></ClientPermission>} />
+                    <Route path="/admin-pos" element={<ClientPermission><POS /></ClientPermission>} />
                 </Route>
             </Routes>
             <Toaster position="top-right" reverseOrder={false} duration={2000} />

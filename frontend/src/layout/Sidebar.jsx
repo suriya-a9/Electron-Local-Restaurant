@@ -1,15 +1,9 @@
-import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/authContext';
 import {
     LayoutDashboard,
     BarChart3,
-    Settings,
-    CircleHelp,
-    Bot,
-    FileText,
     List,
-    BotMessageSquare,
     UserPlus,
     Users,
     CalendarPlus2,
@@ -20,7 +14,8 @@ import {
     Ruler,
     ShoppingBasket,
     BadgeDollarSign,
-    Printer
+    Printer,
+    HandPlatter
 } from "lucide-react";
 
 const SUPER_ADMIN_NAVIGATION = [
@@ -107,6 +102,13 @@ const ADMIN_NAVIGATION = [
         roles: ["admin", "manager", "cashier", "waiter"],
     },
     {
+        id: "tables",
+        label: "Tables",
+        path: "/admin-table",
+        icon: HandPlatter,
+        roles: ["admin", "manager", "cashier", "waiter"],
+    },
+    {
         id: "pos",
         label: "Pos",
         path: "/admin-pos",
@@ -127,13 +129,13 @@ const ADMIN_NAVIGATION = [
         icon: Printer,
         roles: ["admin", "manager", "cashier", "waiter"],
     },
-    {
-        id: "pos",
-        label: "POS",
-        path: "/static-pos",
-        icon: Printer,
-        roles: ["admin", "manager", "cashier", "waiter"],
-    }
+    // {
+    //     id: "static-pos",
+    //     label: "Static POS",
+    //     path: "/static-pos",
+    //     icon: Printer,
+    //     roles: ["admin", "manager", "cashier", "waiter"],
+    // }
 ];
 
 const Sidebar = ({ isOpen, isMobile, closeSidebar }) => {
