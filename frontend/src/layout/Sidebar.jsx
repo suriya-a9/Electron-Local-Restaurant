@@ -15,7 +15,8 @@ import {
     ShoppingBasket,
     BadgeDollarSign,
     Printer,
-    HandPlatter
+    HandPlatter,
+    UserRound
 } from "lucide-react";
 
 const SUPER_ADMIN_NAVIGATION = [
@@ -106,6 +107,13 @@ const ADMIN_NAVIGATION = [
         label: "Tables",
         path: "/admin-table",
         icon: HandPlatter,
+        roles: ["admin", "manager", "cashier", "waiter"],
+    },
+    {
+        id: "customers",
+        label: "Customers",
+        path: "/admin-customers",
+        icon: UserRound,
         roles: ["admin", "manager", "cashier", "waiter"],
     },
     {

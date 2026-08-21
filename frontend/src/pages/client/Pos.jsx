@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 import {
     MapPin, Calendar, FastForward, Columns, UserPlus, Printer,
     Calculator, RotateCcw, MoreVertical, Plus, Minus, User, UserCheck, Scan, Utensils, Package, Bike, ShoppingBag, Pause, Lock,
-    FileText, Clock, Trash2, Edit2, ArrowRight, ChevronRight, ChevronLeft,
+    FileText, Clock, Trash2, Edit2, ChevronRight, ChevronLeft,
     X,
 } from "lucide-react";
 import { useAuth } from "../../context/authContext";
@@ -60,6 +61,15 @@ const PAYMENT_METHOD_OPTIONS = [
 
 const emptyPayment = { payment_method: "cash", amount: "" };
 const PRODUCT_DISPLAY_LIMIT = 12;
+const emptyCustomer = { name: "", mobile_number: "", address: "" };
+const CALCULATOR_BUTTONS = [
+    ["sin", "cos", "tan", "log", "ln"],
+    ["x2", "x3", "sqrt", "pi", "e"],
+    ["AC", "backspace", "(", ")", "%"],
+    ["7", "8", "9", "/", "*"],
+    ["4", "5", "6", "-", "+"],
+    ["1", "2", "3", "0", "."],
+];
 
 function currency(n) {
     const value = Number(n) || 0;
@@ -120,8 +130,16 @@ const POS = () => {
     const [selectedCategoryId, setSelectedCategoryId] = useState(null);
     const [productSearch, setProductSearch] = useState("");
     const [productPage, setProductPage] = useState(1);
+    const searchInputRef = useRef(null);
     const [customerName, setCustomerName] = useState("Walk-In Customer");
+    const [customers, setCustomers] = useState([]);
+    const [showCustomerPicker, setShowCustomerPicker] = useState(false);
     const [guestCount, setGuestCount] = useState(2);
+    const [showCustomerForm, setShowCustomerForm] = useState(false);
+    const [customerForm, setCustomerForm] = useState(emptyCustomer);
+    const [savingCustomer, setSavingCustomer] = useState(false);
+    const [showCalculator, setShowCalculator] = useState(false);
+    const [calculatorValue, setCalculatorValue] = useState("");
 
     const [cart, setCart] = useState([]);
     const [discountAmount, setDiscountAmount] = useState(0);
@@ -155,6 +173,10 @@ const POS = () => {
     }, []);
 
     useEffect(() => {
+        searchInputRef.current?.focus();
+    }, []);
+
+    useEffect(() => {
         setProductPage(1);
         if (businessLocationId) loadProducts();
     }, [businessLocationId]);
@@ -162,8 +184,10 @@ const POS = () => {
     useEffect(() => {
         if (businessLocationId) {
             loadTables();
+            loadCustomers();
         } else {
             setTables([]);
+            setCustomers([]);
         }
     }, [businessLocationId]);
 
@@ -271,6 +295,21 @@ const POS = () => {
         }
     }
 
+    async function loadCustomers() {
+        try {
+            const res = await fetch(
+                `${API_BASE_URL}/api/customers?business_location_id=${encodeURIComponent(businessLocationId)}`,
+                { headers: { Accept: "application/json", ...authHeaders } }
+            );
+            const json = await res.json();
+            if (!res.ok || !json.success) throw new Error(json.message || "Failed to load customers");
+            setCustomers(Array.isArray(json.data) ? json.data : []);
+        } catch (err) {
+            console.error("Load customers error:", err);
+            setCustomers([]);
+        }
+    }
+
     function addToCart(product) {
         setCart((prev) => {
             const existing = prev.find((i) => i.product_id === product.id);
@@ -294,6 +333,8 @@ const POS = () => {
                 },
             ];
         });
+        setProductSearch("");
+        searchInputRef.current?.focus();
     }
 
     function updateQuantity(productId, delta) {
@@ -325,6 +366,116 @@ const POS = () => {
         setSaleType("dining");
     }
 
+    function openCustomerForm() {
+        setCustomerForm(emptyCustomer);
+        setShowCustomerForm(true);
+    }
+
+    function handleCustomerChange(event) {
+        const { name, value } = event.target;
+        setCustomerForm((previous) => ({ ...previous, [name]: value }));
+    }
+
+    function selectCustomer(customer) {
+        setCustomerName(customer.name);
+        setShowCustomerPicker(false);
+    }
+
+    function calculateValue(value) {
+        const expression = value.trim();
+        if (!expression || !/^[0-9+\-*/().%\s]+$/.test(expression)) return null;
+
+        try {
+            const result = Function(`"use strict"; return (${expression})`)();
+            return Number.isFinite(result) ? String(result) : null;
+        } catch {
+            return null;
+        }
+    }
+
+    function handleCalculatorButton(button) {
+        if (button === "AC") {
+            setCalculatorValue("");
+            return;
+        }
+
+        if (button === "backspace") {
+            setCalculatorValue((value) => value.slice(0, -1));
+            return;
+        }
+
+        if (button === "=") {
+            const result = calculateValue(calculatorValue);
+            if (result === null) toast.error("Enter a valid calculation");
+            else setCalculatorValue(result);
+            return;
+        }
+
+        if (button === "pi") {
+            setCalculatorValue((value) => `${value}${Math.PI}`);
+            return;
+        }
+
+        if (button === "e") {
+            setCalculatorValue((value) => `${value}${Math.E}`);
+            return;
+        }
+
+        if (button === "sqrt" || button === "x2" || button === "x3" || ["sin", "cos", "tan", "log", "ln"].includes(button)) {
+            const number = Number(calculatorValue);
+            if (!Number.isFinite(number)) {
+                toast.error("Enter a number first");
+                return;
+            }
+            const result = button === "sqrt" ? Math.sqrt(number)
+                : button === "x2" ? number ** 2
+                    : button === "x3" ? number ** 3
+                        : button === "sin" ? Math.sin(number)
+                            : button === "cos" ? Math.cos(number)
+                                : button === "tan" ? Math.tan(number)
+                                    : button === "log" ? Math.log10(number)
+                                        : Math.log(number);
+            setCalculatorValue(Number.isFinite(result) ? String(result) : "");
+            return;
+        }
+
+        setCalculatorValue((value) => `${value}${button}`);
+    }
+
+    async function saveCustomer(event) {
+        event.preventDefault();
+        setSavingCustomer(true);
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/customers`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Accept: "application/json",
+                    ...authHeaders,
+                },
+                body: JSON.stringify({
+                    ...customerForm,
+                    business_location_id: businessLocationId,
+                }),
+            });
+            const json = await response.json();
+
+            if (!response.ok || !json.success) {
+                throw new Error(json.message || "Failed to create customer");
+            }
+
+            setCustomerName(json.data.name);
+            setShowCustomerForm(false);
+            toast.success("Customer created successfully");
+        } catch (error) {
+            console.error("Create customer error:", error);
+            toast.error(error.message);
+        } finally {
+            setSavingCustomer(false);
+        }
+    }
+
     const itemsTotal = useMemo(
         () =>
             cart.reduce(
@@ -348,11 +499,6 @@ const POS = () => {
 
     const totalPayable = rawTotal + roundOffAmount;
 
-    const paymentsTotal = useMemo(
-        () => payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0),
-        [payments]
-    );
-
     const filteredProducts = products.filter((p) => {
         const matchesCategory =
             !selectedCategoryId || p.category_id === selectedCategoryId;
@@ -373,7 +519,9 @@ const POS = () => {
     }, [totalProductPages]);
 
     function setSinglePayment(method) {
-        setPayments([{ payment_method: method, amount: totalPayable.toFixed(2) }]);
+        const selectedPayment = [{ payment_method: method, amount: totalPayable.toFixed(2) }];
+        setPayments(selectedPayment);
+        handleCheckout(selectedPayment);
     }
 
     function enableMultiplePay() {
@@ -397,7 +545,7 @@ const POS = () => {
         setPayments((prev) => prev.filter((_, i) => i !== index));
     }
 
-    async function handleCheckout() {
+    async function handleCheckout(paymentRows = payments) {
         setCheckoutError(null);
 
         if (cart.length === 0) {
@@ -405,9 +553,14 @@ const POS = () => {
             return;
         }
 
-        if (Math.abs(paymentsTotal - totalPayable) > 0.01) {
+        const selectedPaymentsTotal = paymentRows.reduce(
+            (sum, payment) => sum + (Number(payment.amount) || 0),
+            0
+        );
+
+        if (Math.abs(selectedPaymentsTotal - totalPayable) > 0.01) {
             setCheckoutError(
-                `Payment total (${currency(paymentsTotal)}) must match the payable amount (${currency(
+                `Payment total (${currency(selectedPaymentsTotal)}) must match the payable amount (${currency(
                     totalPayable
                 )}).`
             );
@@ -427,7 +580,7 @@ const POS = () => {
                 unit_price_inc_tax: i.unit_price_inc_tax,
                 discount_amount: i.discount_amount || 0,
             })),
-            payments: payments.map((p) => ({
+            payments: paymentRows.map((p) => ({
                 payment_method: p.payment_method,
                 amount: Number(p.amount) || 0,
             })),
@@ -454,6 +607,7 @@ const POS = () => {
 
             setLastSale(json.data);
             clearOrder();
+            toast.success("Sales created successfully");
         } catch (err) {
             console.error("Create sale error:", err);
             setCheckoutError(err.message);
@@ -587,11 +741,21 @@ const POS = () => {
                 </div>
 
                 <div className="flex items-center gap-1.5">
-                    <button className="p-1.5 text-indigo-600 hover:bg-slate-100 rounded-md border border-slate-200 bg-white"><FastForward className="w-4 h-4" /></button>
-                    <button className="p-1.5 text-indigo-600 hover:bg-slate-100 rounded-md border border-slate-200 bg-white"><Columns className="w-4 h-4" /></button>
-                    <button className="p-1.5 text-indigo-600 hover:bg-slate-100 rounded-md border border-slate-200 bg-white"><UserPlus className="w-4 h-4" /></button>
+                    {/* <button className="p-1.5 text-indigo-600 hover:bg-slate-100 rounded-md border border-slate-200 bg-white"><FastForward className="w-4 h-4" /></button>
+                    <button className="p-1.5 text-indigo-600 hover:bg-slate-100 rounded-md border border-slate-200 bg-white"><Columns className="w-4 h-4" /></button> */}
+                    <button
+                        type="button"
+                        onClick={openCustomerForm}
+                        className="p-1.5 text-indigo-600 hover:bg-slate-100 rounded-md border border-slate-200 bg-white"
+                        aria-label="Add customer"
+                    ><UserPlus className="w-4 h-4" /></button>
                     <button className="p-1.5 text-emerald-600 hover:bg-slate-100 rounded-md border border-slate-200 bg-white"><Printer className="w-4 h-4" /></button>
-                    <button className="p-1.5 text-emerald-600 hover:bg-slate-100 rounded-md border border-slate-200 bg-white"><Calculator className="w-4 h-4" /></button>
+                    <button
+                        type="button"
+                        onClick={() => setShowCalculator(true)}
+                        className="p-1.5 text-emerald-600 hover:bg-slate-100 rounded-md border border-slate-200 bg-white"
+                        aria-label="Open calculator"
+                    ><Calculator className="w-4 h-4" /></button>
                     <button
                         onClick={() => {
                             loadProducts();
@@ -613,17 +777,48 @@ const POS = () => {
                 <div className="flex-[2.6] flex flex-col gap-2 overflow-hidden">
 
                     <div className="flex items-center gap-2">
-                        <div className="flex items-center bg-white rounded-lg border border-slate-200 p-1 flex-1">
+                        <div className="relative flex items-center bg-white rounded-lg border border-slate-200 p-1 flex-1">
                             <div className="flex items-center gap-2 px-2 text-slate-600 border-r border-slate-200 flex-1">
                                 <User className="w-4 h-4 text-slate-400" />
                                 <input
                                     value={customerName}
                                     onChange={(e) => setCustomerName(e.target.value)}
+                                    onFocus={() => setShowCustomerPicker(true)}
                                     placeholder="Walk-In Customer"
                                     className="font-semibold text-slate-800 bg-transparent outline-none w-full"
                                 />
                             </div>
-                            <button className="p-1 bg-indigo-600 text-white rounded-md ml-1"><Plus className="w-3.5 h-3.5" /></button>
+                            <button
+                                type="button"
+                                onClick={openCustomerForm}
+                                className="p-1 bg-indigo-600 text-white rounded-md ml-1"
+                                aria-label="Add customer"
+                            ><Plus className="w-3.5 h-3.5" /></button>
+
+                            {showCustomerPicker && customers.length > 0 && (
+                                <div className="absolute left-1 right-1 top-full z-30 mt-1 max-h-48 overflow-y-auto rounded-lg border border-slate-200 bg-white p-1 shadow-lg">
+                                    {customers
+                                        .filter((customer) => {
+                                            const query = customerName === "Walk-In Customer"
+                                                ? ""
+                                                : customerName.toLowerCase().trim();
+                                            return !query || customer.name.toLowerCase().includes(query) || customer.mobile_number.includes(query);
+                                        })
+                                        .slice(0, 8)
+                                        .map((customer) => (
+                                            <button
+                                                key={customer.id}
+                                                type="button"
+                                                onMouseDown={(event) => event.preventDefault()}
+                                                onClick={() => selectCustomer(customer)}
+                                                className="flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-left hover:bg-indigo-50"
+                                            >
+                                                <span className="truncate font-semibold text-slate-800">{customer.name}</span>
+                                                <span className="shrink-0 text-[10px] text-slate-400">{customer.mobile_number}</span>
+                                            </button>
+                                        ))}
+                                </div>
+                            )}
                         </div>
 
                         <div className="flex items-center bg-white rounded-lg border border-slate-200 p-1 px-3 gap-2">
@@ -637,8 +832,9 @@ const POS = () => {
                             />
                         </div>
 
-                        <div className="flex items-center bg-white rounded-lg border border-slate-200 px-3 py-1.5 flex-[1.8] justify-between">
+                        <div className="relative flex items-center bg-white rounded-lg border border-slate-200 px-3 py-1.5 flex-[1.8] justify-between">
                             <input
+                                ref={searchInputRef}
                                 type="text"
                                 value={productSearch}
                                 onChange={(e) => {
@@ -652,6 +848,25 @@ const POS = () => {
                                 <Scan className="w-4 h-4 text-indigo-600 cursor-pointer" />
                                 <button className="p-1 bg-indigo-600 text-white rounded-md"><Plus className="w-3.5 h-3.5" /></button>
                             </div>
+
+                            {productSearch.trim() && filteredProducts.length > 0 && (
+                                <div className="absolute left-0 right-0 top-full z-30 mt-1 max-h-56 overflow-y-auto rounded-lg border border-slate-200 bg-white p-1 shadow-lg">
+                                    {filteredProducts.slice(0, 8).map((product) => (
+                                        <button
+                                            key={product.id}
+                                            type="button"
+                                            onMouseDown={(event) => event.preventDefault()}
+                                            onClick={() => addToCart(product)}
+                                            className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-left hover:bg-indigo-50"
+                                        >
+                                            <span className="truncate font-semibold text-slate-800">{product.name}</span>
+                                            <span className="shrink-0 text-[10px] font-bold text-indigo-600">
+                                                {currency(product.default_selling_price_inc_tax)}
+                                            </span>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -986,14 +1201,6 @@ const POS = () => {
                             </div>
                         )}
 
-                        <button
-                            onClick={handleCheckout}
-                            disabled={saving}
-                            className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg flex items-center justify-center gap-2 shadow-sm transition-colors text-xs disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                            <span>{saving ? "Processing..." : "Proceed to Pay"}</span>
-                            {!saving && <ArrowRight className="w-4 h-4" />}
-                        </button>
                     </div>
                 </div>
 
@@ -1002,14 +1209,14 @@ const POS = () => {
             <footer className="flex items-center justify-between gap-2 pt-0.5">
 
                 <div className="flex items-center gap-1.5">
-                    <button className="bg-white border border-slate-200 hover:bg-slate-50 p-1.5 rounded-lg flex flex-col items-center justify-center text-rose-500 w-14 h-11">
+                    {/* <button className="bg-white border border-slate-200 hover:bg-slate-50 p-1.5 rounded-lg flex flex-col items-center justify-center text-rose-500 w-14 h-11">
                         <Pause className="w-3.5 h-3.5" />
                         <span className="text-[8px] font-semibold mt-0.5">Suspend</span>
                     </button>
                     <button className="bg-white border border-slate-200 hover:bg-slate-50 p-1.5 rounded-lg flex flex-col items-center justify-center text-sky-500 w-14 h-11">
                         <Lock className="w-3.5 h-3.5" />
                         <span className="text-[8px] font-semibold mt-0.5">Hold</span>
-                    </button>
+                    </button> */}
                     <button className="bg-white border border-slate-200 hover:bg-slate-50 p-1.5 rounded-lg flex flex-col items-center justify-center text-emerald-600 w-14 h-11">
                         <FileText className="w-3.5 h-3.5" />
                         <span className="text-[8px] font-semibold mt-0.5">KOT</span>
@@ -1048,6 +1255,106 @@ const POS = () => {
                 </div>
 
             </footer>
+
+            {showCustomerForm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4">
+                    <form onSubmit={saveCustomer} className="w-full max-w-md rounded-xl bg-white p-5 shadow-2xl">
+                        <div className="mb-4 flex items-center justify-between">
+                            <h2 className="text-sm font-bold text-slate-900">Add Customer</h2>
+                            <button type="button" onClick={() => setShowCustomerForm(false)} className="text-slate-400 hover:text-slate-700">
+                                <X className="h-4 w-4" />
+                            </button>
+                        </div>
+
+                        <div className="space-y-3">
+                            <input
+                                name="name"
+                                value={customerForm.name}
+                                onChange={handleCustomerChange}
+                                placeholder="Customer name"
+                                required
+                                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs outline-none focus:border-indigo-500"
+                            />
+                            <input
+                                name="mobile_number"
+                                value={customerForm.mobile_number}
+                                onChange={handleCustomerChange}
+                                placeholder="Mobile number"
+                                required
+                                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs outline-none focus:border-indigo-500"
+                            />
+                            <textarea
+                                name="address"
+                                value={customerForm.address}
+                                onChange={handleCustomerChange}
+                                placeholder="Address"
+                                rows={3}
+                                className="w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-xs outline-none focus:border-indigo-500"
+                            />
+                        </div>
+
+                        <div className="mt-4 flex justify-end gap-2">
+                            <button type="button" onClick={() => setShowCustomerForm(false)} className="rounded-lg border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600">
+                                Cancel
+                            </button>
+                            <button type="submit" disabled={savingCustomer} className="rounded-lg bg-indigo-600 px-4 py-2 text-xs font-bold text-white disabled:opacity-60">
+                                {savingCustomer ? "Saving..." : "Save Customer"}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            )}
+
+            {showCalculator && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4">
+                    <div className="w-full max-w-[280px] rounded-xl border-[7px] border-[#3b2b25] bg-[#2d211d] p-2.5 shadow-2xl">
+                        <div className="mb-2 flex items-center justify-between px-1">
+                            <span className="text-[8px] font-bold uppercase tracking-widest text-[#bca993]">Code Mode</span>
+                            <button type="button" onClick={() => setShowCalculator(false)} className="h-3 w-3 rounded-full bg-orange-400" aria-label="Close calculator" />
+                        </div>
+                        <input
+                            autoFocus
+                            value={calculatorValue}
+                            onChange={(event) => setCalculatorValue(event.target.value)}
+                            onKeyDown={(event) => {
+                                if (event.key === "Enter") {
+                                    handleCalculatorButton("=");
+                                }
+                            }}
+                            placeholder="0"
+                            className="mb-2 w-full rounded-md border-2 border-[#d8cca2] bg-[#e8deb7] px-3 py-3 text-right text-2xl font-medium text-slate-900 outline-none"
+                        />
+                        <div className="grid grid-cols-5 gap-2">
+                            {CALCULATOR_BUTTONS.flat().map((button) => {
+                                const isOperator = ["/", "*", "-", "+", "%", "(", ")", "pi", "e"].includes(button);
+                                const isAction = ["AC", "backspace"].includes(button);
+                                return (
+                                    <button
+                                        key={button}
+                                        type="button"
+                                        onClick={() => handleCalculatorButton(button)}
+                                        className={`h-11 rounded-md text-[10px] font-bold shadow-[0_3px_0_rgba(0,0,0,0.25)] active:translate-y-0.5 active:shadow-none ${isAction
+                                            ? "bg-[#c84b51] text-white"
+                                            : isOperator
+                                                ? "bg-[#d48735] text-white"
+                                                : "bg-[#553b31] text-[#f2dfc5]"
+                                            }`}
+                                    >
+                                        {button === "backspace" ? "⌫" : button === "sqrt" ? "√" : button === "x2" ? "x²" : button === "x3" ? "x³" : button}
+                                    </button>
+                                );
+                            })}
+                            <button
+                                type="button"
+                                onClick={() => handleCalculatorButton("=")}
+                                className="col-span-5 h-11 rounded-full bg-[#c84b51] text-sm font-bold text-white shadow-[0_3px_0_rgba(0,0,0,0.25)] active:translate-y-0.5 active:shadow-none"
+                            >
+                                =
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {showHistory && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
