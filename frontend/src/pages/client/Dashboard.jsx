@@ -145,11 +145,13 @@ const ClientDashboard = () => {
         })}`;
     }
 
+    // Colors pulled from the POS screen: indigo = primary/credit, emerald = cash/success,
+    // sky = card, pink = GPay/UPI, rose = due/danger, amber = warning (reserved for future use)
     const paymentMethods = [
-        { key: "cash", label: "Cash", icon: Banknote },
-        { key: "card", label: "Card", icon: CreditCard },
-        { key: "gpay", label: "GPay", icon: Smartphone },
-        { key: "credit", label: "Credit", icon: Clock },
+        { key: "cash", label: "Cash", icon: Banknote, iconBg: "bg-emerald-50", iconText: "text-emerald-600" },
+        { key: "card", label: "Card", icon: CreditCard, iconBg: "bg-sky-50", iconText: "text-sky-600" },
+        { key: "gpay", label: "GPay", icon: Smartphone, iconBg: "bg-pink-50", iconText: "text-pink-600" },
+        { key: "credit", label: "Credit", icon: Clock, iconBg: "bg-indigo-50", iconText: "text-indigo-600" },
     ];
 
     const activeRangeLabel =
@@ -178,10 +180,10 @@ const ClientDashboard = () => {
             <div className="flex flex-col gap-4 border-b border-zinc-100 px-6 py-6 md:flex-row md:items-center md:justify-between md:px-8 lg:px-12">
 
                 <div>
-                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#40295C]">
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-600">
                         Analytics Dashboard
                     </p>
-                    <h1 className="mt-2 text-4xl font-extrabold tracking-tight text-[#40295C] sm:text-5xl">
+                    <h1 className="mt-2 text-4xl font-extrabold tracking-tight text-indigo-950 sm:text-5xl">
                         Sales Overview
                     </h1>
                 </div>
@@ -197,7 +199,7 @@ const ClientDashboard = () => {
                             value={selectedLocationId}
                             onChange={(e) => setSelectedLocationId(e.target.value)}
                             disabled={loadingLocations}
-                            className="rounded-xl border border-zinc-200/80 bg-white px-3.5 py-2.5 text-sm font-medium text-zinc-900 outline-none focus:border-[#40295C]"
+                            className="rounded-xl border border-zinc-200/80 bg-white px-3.5 py-2.5 text-sm font-medium text-zinc-900 outline-none focus:border-indigo-500"
                         >
                             <option value="">All Branches</option>
                             {locations.map((loc) => (
@@ -219,7 +221,7 @@ const ClientDashboard = () => {
                             type="button"
                             onClick={() => handlePeriodClick(opt.key)}
                             className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-colors ${period === opt.key
-                                ? "bg-[#40295C] text-white"
+                                ? "bg-indigo-600 text-white shadow-sm"
                                 : "border border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50"
                                 }`}
                         >
@@ -232,7 +234,7 @@ const ClientDashboard = () => {
                 </div>
 
                 {activeRangeLabel && (
-                    <span className="rounded-lg border border-zinc-200 bg-zinc-50 px-3.5 py-1.5 text-xs font-semibold text-zinc-600">
+                    <span className="rounded-lg border border-indigo-100 bg-indigo-50/50 px-3.5 py-1.5 text-xs font-semibold text-indigo-600">
                         {activeRangeLabel}
                     </span>
                 )}
@@ -249,7 +251,7 @@ const ClientDashboard = () => {
                             value={fromDate}
                             max={toDate}
                             onChange={(e) => setFromDate(e.target.value)}
-                            className="mt-1.5 rounded-xl border border-zinc-200/80 bg-white px-3.5 py-2.5 text-sm font-medium text-zinc-900 outline-none focus:border-[#40295C]"
+                            className="mt-1.5 rounded-xl border border-zinc-200/80 bg-white px-3.5 py-2.5 text-sm font-medium text-zinc-900 outline-none focus:border-indigo-500"
                         />
                     </div>
 
@@ -262,14 +264,14 @@ const ClientDashboard = () => {
                             value={toDate}
                             min={fromDate}
                             onChange={(e) => setToDate(e.target.value)}
-                            className="mt-1.5 rounded-xl border border-zinc-200/80 bg-white px-3.5 py-2.5 text-sm font-medium text-zinc-900 outline-none focus:border-[#40295C]"
+                            className="mt-1.5 rounded-xl border border-zinc-200/80 bg-white px-3.5 py-2.5 text-sm font-medium text-zinc-900 outline-none focus:border-indigo-500"
                         />
                     </div>
 
                     <button
                         type="button"
                         onClick={applyCustomRange}
-                        className="rounded-xl bg-[#40295C] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#321f49]"
+                        className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700"
                     >
                         Apply
                     </button>
@@ -278,7 +280,7 @@ const ClientDashboard = () => {
 
             <div className="p-6 md:p-8 lg:p-12">
 
-                <p className="text-xs font-bold uppercase tracking-wider text-[#40295C]">
+                <p className="text-xs font-bold uppercase tracking-wider text-indigo-600">
                     Sales Overview
                 </p>
 
@@ -295,7 +297,7 @@ const ClientDashboard = () => {
                         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
 
                             <div className="rounded-2xl border border-zinc-200/70 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
-                                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#40295C]/5 text-[#40295C]">
+                                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
                                     <ShoppingCart size={19} />
                                 </div>
                                 <p className="mt-5 text-xs font-semibold uppercase tracking-wider text-zinc-400">
@@ -307,7 +309,7 @@ const ClientDashboard = () => {
                             </div>
 
                             <div className="rounded-2xl border border-zinc-200/70 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
-                                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#40295C]/5 text-[#40295C]">
+                                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
                                     <Wallet size={19} />
                                 </div>
                                 <p className="mt-5 text-xs font-semibold uppercase tracking-wider text-zinc-400">
@@ -319,7 +321,7 @@ const ClientDashboard = () => {
                             </div>
 
                             <div className="rounded-2xl border border-zinc-200/70 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
-                                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#40295C]/5 text-[#40295C]">
+                                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-rose-50 text-rose-600">
                                     <AlertCircle size={19} />
                                 </div>
                                 <p className="mt-5 text-xs font-semibold uppercase tracking-wider text-zinc-400">
@@ -338,12 +340,12 @@ const ClientDashboard = () => {
                             </p>
 
                             <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                                {paymentMethods.map(({ key, label, icon: Icon }) => (
+                                {paymentMethods.map(({ key, label, icon: Icon, iconBg, iconText }) => (
                                     <div
                                         key={key}
                                         className="flex items-center gap-3 rounded-xl border border-zinc-200/80 bg-zinc-50/40 p-4"
                                     >
-                                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#40295C]/5 text-[#40295C]">
+                                        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${iconBg} ${iconText}`}>
                                             <Icon size={16} />
                                         </div>
                                         <div>

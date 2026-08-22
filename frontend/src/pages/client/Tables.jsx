@@ -272,7 +272,7 @@ const Tables = () => {
     }
 
     function inputClass(field) {
-        return `mt-1.5 w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm font-medium text-zinc-900 outline-none focus:border-[#40295C] ${formErrors[field] ? "border-rose-400" : "border-zinc-200/80"
+        return `mt-1.5 w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm font-medium text-zinc-900 outline-none focus:border-indigo-500 ${formErrors[field] ? "border-rose-400" : "border-zinc-200/80"
             }`;
     }
 
@@ -281,7 +281,7 @@ const Tables = () => {
 
             <div className="flex flex-col gap-6 border-b border-zinc-100 pb-8 md:flex-row md:items-center md:justify-between">
                 <div>
-                    <h1 className="text-4xl font-extrabold tracking-tight text-[#40295C] sm:text-5xl">
+                    <h1 className="text-4xl font-extrabold tracking-tight text-indigo-950 sm:text-5xl">
                         Tables
                     </h1>
 
@@ -296,7 +296,7 @@ const Tables = () => {
                             value={locationFilter}
                             onChange={(e) => setLocationFilter(e.target.value)}
                             disabled={loadingLocations}
-                            className="rounded-xl border border-zinc-200 bg-white px-3.5 py-2.5 text-sm font-medium outline-none focus:border-[#40295C]"
+                            className="rounded-xl border border-zinc-200 bg-white px-3.5 py-2.5 text-sm font-medium outline-none focus:border-indigo-500"
                         >
                             <option value="">All locations</option>
                             {locations.map((loc) => (
@@ -309,7 +309,7 @@ const Tables = () => {
 
                     <button
                         onClick={openCreateForm}
-                        className="group flex items-center justify-center gap-2 rounded-full bg-[#40295C] px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#321f49] hover:scale-[1.01] active:scale-[0.99]"
+                        className="group flex items-center justify-center gap-2 rounded-full bg-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-700 hover:scale-[1.01] active:scale-[0.99]"
                     >
                         <Plus size={16} className="transition-transform group-hover:rotate-90" />
                         New Table
@@ -444,7 +444,7 @@ const Tables = () => {
                         <button
                             type="submit"
                             disabled={saving}
-                            className="flex items-center gap-1.5 rounded-xl bg-[#40295C] px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[#321f49] disabled:cursor-not-allowed disabled:opacity-60"
+                            className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                             <Check size={14} />
                             {saving
@@ -486,7 +486,7 @@ const Tables = () => {
                             >
                                 <div className="flex items-start justify-between">
                                     <div className="flex items-center gap-3">
-                                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#40295C]/5 text-[#40295C]">
+                                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
                                             <LayoutGrid size={18} />
                                         </div>
 
@@ -525,7 +525,7 @@ const Tables = () => {
                                         value={table.status}
                                         disabled={statusLoading === table.id}
                                         onChange={(e) => changeStatus(table, e.target.value)}
-                                        className="flex-1 rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-zinc-700 outline-none focus:border-[#40295C] disabled:opacity-50"
+                                        className="flex-1 rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-zinc-700 outline-none focus:border-indigo-500 disabled:opacity-50"
                                     >
                                         <option value="available">Available</option>
                                         <option value="occupied">Occupied</option>
@@ -537,7 +537,7 @@ const Tables = () => {
                                     <button
                                         type="button"
                                         onClick={() => openEditForm(table)}
-                                        className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-2 text-xs font-semibold text-zinc-600 hover:bg-zinc-50"
+                                        className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-2 text-xs font-semibold text-zinc-600 transition-colors hover:border-indigo-300 hover:text-indigo-600"
                                     >
                                         <Pencil size={12} />
                                         Edit

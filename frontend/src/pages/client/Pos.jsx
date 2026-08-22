@@ -131,6 +131,8 @@ const POS = () => {
     const [productSearch, setProductSearch] = useState("");
     const [productPage, setProductPage] = useState(1);
     const searchInputRef = useRef(null);
+    const enterShortcutTimerRef = useRef(null);
+    const shortcutPaymentRef = useRef(null);
     const [customerName, setCustomerName] = useState("Walk-In Customer");
     const [customers, setCustomers] = useState([]);
     const [showCustomerPicker, setShowCustomerPicker] = useState(false);
@@ -518,11 +520,57 @@ const POS = () => {
         setProductPage((page) => Math.min(page, Math.max(totalProductPages, 1)));
     }, [totalProductPages]);
 
+    useEffect(() => {
+        function handleEnterShortcut(event) {
+            if (event.key !== "Enter" || event.repeat || showCustomerForm || showCalculator || showHistory) {
+                return;
+            }
+
+            const target = event.target;
+            if (target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) {
+                return;
+            }
+
+            if (target instanceof HTMLInputElement && target !== searchInputRef.current) {
+                return;
+            }
+
+            event.preventDefault();
+
+            if (target === searchInputRef.current && productSearch.trim() && filteredProducts.length > 0) {
+                addToCart(filteredProducts[0]);
+                return;
+            }
+
+            if (enterShortcutTimerRef.current) {
+                clearTimeout(enterShortcutTimerRef.current);
+                enterShortcutTimerRef.current = null;
+                shortcutPaymentRef.current?.("card");
+                return;
+            }
+
+            enterShortcutTimerRef.current = setTimeout(() => {
+                enterShortcutTimerRef.current = null;
+                shortcutPaymentRef.current?.("cash");
+            }, 300);
+        }
+
+        window.addEventListener("keydown", handleEnterShortcut);
+        return () => {
+            window.removeEventListener("keydown", handleEnterShortcut);
+            if (enterShortcutTimerRef.current) {
+                clearTimeout(enterShortcutTimerRef.current);
+            }
+        };
+    }, [showCustomerForm, showCalculator, showHistory, productSearch, filteredProducts]);
+
     function setSinglePayment(method) {
         const selectedPayment = [{ payment_method: method, amount: totalPayable.toFixed(2) }];
         setPayments(selectedPayment);
         handleCheckout(selectedPayment);
     }
+
+    shortcutPaymentRef.current = setSinglePayment;
 
     function enableMultiplePay() {
         setPayments([

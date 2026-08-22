@@ -305,7 +305,7 @@ const Units = () => {
     }
 
     function inputClass(field) {
-        return `mt-1.5 w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm font-medium text-zinc-900 outline-none focus:border-[#40295C] ${formErrors[field]
+        return `mt-1.5 w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm font-medium text-zinc-900 outline-none focus:border-indigo-500 ${formErrors[field]
             ? "border-rose-400"
             : "border-zinc-200/80"
             }`;
@@ -323,7 +323,7 @@ const Units = () => {
             <div className="flex flex-col gap-6 border-b border-zinc-100 pb-8 md:flex-row md:items-center md:justify-between">
 
                 <div>
-                    <h1 className="text-4xl font-extrabold tracking-tight text-[#40295C] sm:text-5xl">
+                    <h1 className="text-4xl font-extrabold tracking-tight text-indigo-950 sm:text-5xl">
                         Units
                     </h1>
 
@@ -337,7 +337,7 @@ const Units = () => {
 
                 <button
                     onClick={openCreateForm}
-                    className="group flex items-center justify-center gap-2 rounded-full bg-[#40295C] px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#321f49] hover:scale-[1.01] active:scale-[0.99]"
+                    className="group flex items-center justify-center gap-2 rounded-full bg-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-700 hover:scale-[1.01] active:scale-[0.99]"
                 >
                     <Plus
                         size={16}
@@ -440,7 +440,7 @@ const Units = () => {
                                     name="allow_decimal"
                                     checked={form.allow_decimal}
                                     onChange={handleChange}
-                                    className="h-4 w-4 rounded border-zinc-300 text-[#40295C] focus:ring-[#40295C]"
+                                    className="h-4 w-4 rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500"
                                 />
 
                                 Allow Decimal
@@ -459,7 +459,7 @@ const Units = () => {
                         <button
                             type="submit"
                             disabled={saving}
-                            className="flex items-center gap-1.5 rounded-xl bg-[#40295C] px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[#321f49] disabled:cursor-not-allowed disabled:opacity-60"
+                            className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                             <Check size={14} />
 
@@ -501,7 +501,7 @@ const Units = () => {
                             setCurrentPage(1);
                         }}
                         placeholder="Search units..."
-                        className="w-full rounded-xl border border-zinc-200 bg-white py-3 pl-10 pr-4 text-sm outline-none focus:border-[#40295C]"
+                        className="w-full rounded-xl border border-zinc-200 bg-white py-3 pl-10 pr-4 text-sm outline-none focus:border-indigo-500"
                     />
 
                 </div>
@@ -539,7 +539,7 @@ const Units = () => {
 
                                 <div className="flex items-start gap-4">
 
-                                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#40295C]/5 text-[#40295C]">
+                                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
                                         <Ruler size={18} />
                                     </div>
 
@@ -551,7 +551,7 @@ const Units = () => {
                                                 {unit.name}
                                             </h3>
 
-                                            <span className="rounded-full bg-purple-50 px-2 py-0.5 text-[10px] font-bold uppercase text-[#40295C]">
+                                            <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-bold uppercase text-indigo-600">
                                                 {unit.short_name}
                                             </span>
 
@@ -575,7 +575,7 @@ const Units = () => {
 
                                     <button
                                         onClick={() => openEditForm(unit)}
-                                        className="flex items-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-2 text-xs font-semibold text-zinc-600 transition-colors hover:border-[#40295C]/30 hover:text-[#40295C]"
+                                        className="flex items-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-2 text-xs font-semibold text-zinc-600 transition-colors hover:border-indigo-300 hover:text-indigo-600"
                                     >
                                         <Pencil size={13} />
                                         Edit

@@ -243,7 +243,7 @@ const KotPrinterSettings = () => {
     }
 
     function inputClass(field) {
-        return `mt-1.5 w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm font-medium text-zinc-900 outline-none focus:border-[#40295C] ${formErrors[field] ? "border-rose-400" : "border-zinc-200/80"
+        return `mt-1.5 w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm font-medium text-zinc-900 outline-none focus:border-indigo-500 ${formErrors[field] ? "border-rose-400" : "border-zinc-200/80"
             }`;
     }
 
@@ -378,7 +378,7 @@ const KotPrinterSettings = () => {
     return (
         <div className="min-h-screen bg-white text-zinc-800 antialiased p-6 md:p-8 lg:p-12">
             <div className="border-b border-zinc-100 pb-8">
-                <h1 className="text-4xl font-extrabold tracking-tight text-[#40295C] sm:text-5xl">
+                <h1 className="text-4xl font-extrabold tracking-tight text-indigo-950 sm:text-5xl">
                     KOT Printer Settings
                 </h1>
                 <p className="mt-2 text-xs font-semibold uppercase tracking-wider text-zinc-400">
@@ -466,7 +466,7 @@ const KotPrinterSettings = () => {
 
                 <div className="rounded-2xl border border-zinc-200/60 bg-zinc-50/30 p-6">
                     <div className="flex items-center gap-2">
-                        <Wifi size={16} className="text-[#40295C]" />
+                        <Wifi size={16} className="text-indigo-600" />
                         <h2 className="text-sm font-bold text-zinc-900">Network Settings</h2>
                     </div>
 
@@ -576,7 +576,7 @@ const KotPrinterSettings = () => {
                 <div className="rounded-2xl border border-zinc-200/60 bg-zinc-50/30 p-6">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                            <Printer size={16} className="text-[#40295C]" />
+                            <Printer size={16} className="text-indigo-600" />
                             <h2 className="text-sm font-bold text-zinc-900">
                                 Extra KOT Stations
                             </h2>
@@ -587,7 +587,7 @@ const KotPrinterSettings = () => {
                                 type="button"
                                 onClick={() => handleExtraKotToggle("no")}
                                 className={`px-4 py-1.5 text-xs font-semibold transition-colors ${form.has_extra_kot === "no"
-                                    ? "bg-[#40295C] text-white"
+                                    ? "bg-indigo-600 text-white"
                                     : "bg-white text-zinc-500 hover:bg-zinc-50"
                                     }`}
                             >
@@ -597,7 +597,7 @@ const KotPrinterSettings = () => {
                                 type="button"
                                 onClick={() => handleExtraKotToggle("yes")}
                                 className={`px-4 py-1.5 text-xs font-semibold transition-colors ${form.has_extra_kot === "yes"
-                                    ? "bg-[#40295C] text-white"
+                                    ? "bg-indigo-600 text-white"
                                     : "bg-white text-zinc-500 hover:bg-zinc-50"
                                     }`}
                             >
@@ -629,7 +629,7 @@ const KotPrinterSettings = () => {
                                                 updateStation(idx, "category_id", e.target.value)
                                             }
                                             required
-                                            className="rounded-lg border border-zinc-200 px-3 py-2 text-xs font-medium outline-none focus:border-[#40295C]"
+                                            className="rounded-lg border border-zinc-200 px-3 py-2 text-xs font-medium outline-none focus:border-indigo-500"
                                         >
                                             <option value="" disabled>
                                                 Select category
@@ -649,7 +649,7 @@ const KotPrinterSettings = () => {
                                             }
                                             placeholder="Printer IP"
                                             required
-                                            className="rounded-lg border border-zinc-200 px-3 py-2 text-xs font-medium outline-none focus:border-[#40295C]"
+                                            className="rounded-lg border border-zinc-200 px-3 py-2 text-xs font-medium outline-none focus:border-indigo-500"
                                         />
 
                                         <input
@@ -660,7 +660,7 @@ const KotPrinterSettings = () => {
                                             }
                                             placeholder="Port"
                                             required
-                                            className="rounded-lg border border-zinc-200 px-3 py-2 text-xs font-medium outline-none focus:border-[#40295C]"
+                                            className="rounded-lg border border-zinc-200 px-3 py-2 text-xs font-medium outline-none focus:border-indigo-500"
                                         />
 
                                         <button
@@ -678,7 +678,7 @@ const KotPrinterSettings = () => {
                             <button
                                 type="button"
                                 onClick={addStation}
-                                className="flex items-center gap-1.5 rounded-xl border border-dashed border-[#40295C]/40 px-4 py-2 text-xs font-semibold text-[#40295C] hover:bg-[#40295C]/5"
+                                className="flex items-center gap-1.5 rounded-xl border border-dashed border-indigo-600/40 px-4 py-2 text-xs font-semibold text-indigo-600 hover:bg-indigo-50"
                             >
                                 <Plus size={14} />
                                 Add Station
@@ -691,7 +691,7 @@ const KotPrinterSettings = () => {
                     <button
                         type="submit"
                         disabled={saving}
-                        className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#40295C] to-[#5b3a7d] px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+                        className="group flex items-center gap-1.5 rounded-full bg-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-700 hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100"
                     >
                         <Check size={14} />
                         {saving ? "Saving..." : "Save Settings"}

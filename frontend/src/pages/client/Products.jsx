@@ -610,7 +610,7 @@ const Products = () => {
     }
 
     function inputClass(field) {
-        return `mt-1.5 w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm font-medium text-zinc-900 outline-none focus:border-[#40295C] ${formErrors[field]
+        return `mt-1.5 w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm font-medium text-zinc-900 outline-none focus:border-indigo-500 ${formErrors[field]
             ? "border-rose-400"
             : "border-zinc-200/80"
             }`;
@@ -626,7 +626,7 @@ const Products = () => {
             <div className="flex flex-col gap-6 border-b border-zinc-100 pb-8 md:flex-row md:items-center md:justify-between">
 
                 <div>
-                    <h1 className="text-4xl font-extrabold tracking-tight text-[#40295C] sm:text-5xl">
+                    <h1 className="text-4xl font-extrabold tracking-tight text-indigo-950 sm:text-5xl">
                         Products
                     </h1>
 
@@ -638,7 +638,7 @@ const Products = () => {
 
                 <button
                     onClick={openCreateForm}
-                    className="group flex items-center justify-center gap-2 rounded-full bg-[#40295C] px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#321f49] hover:scale-[1.01] active:scale-[0.99]"
+                    className="group flex items-center justify-center gap-2 rounded-full bg-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-700 hover:scale-[1.01] active:scale-[0.99]"
                 >
                     <Plus
                         size={16}
@@ -874,7 +874,7 @@ const Products = () => {
                                     <button
                                         type="button"
                                         onClick={() => setShowNewTaxRateForm(true)}
-                                        className="mt-1.5 text-xs font-semibold text-[#40295C] hover:underline"
+                                        className="mt-1.5 text-xs font-semibold text-indigo-600 hover:underline"
                                     >
                                         + Add new tax rate
                                     </button>
@@ -892,7 +892,7 @@ const Products = () => {
                                         onChange={(e) =>
                                             setNewTaxRate((prev) => ({ ...prev, name: e.target.value }))
                                         }
-                                        className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-xs font-medium outline-none focus:border-[#40295C]"
+                                        className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-xs font-medium outline-none focus:border-indigo-500"
                                     />
 
                                     <div className="flex gap-2">
@@ -904,7 +904,7 @@ const Products = () => {
                                             onChange={(e) =>
                                                 setNewTaxRate((prev) => ({ ...prev, rate_percent: e.target.value }))
                                             }
-                                            className="w-1/2 rounded-lg border border-zinc-200 px-3 py-2 text-xs font-medium outline-none focus:border-[#40295C]"
+                                            className="w-1/2 rounded-lg border border-zinc-200 px-3 py-2 text-xs font-medium outline-none focus:border-indigo-500"
                                         />
 
                                         <input
@@ -914,7 +914,7 @@ const Products = () => {
                                             onChange={(e) =>
                                                 setNewTaxRate((prev) => ({ ...prev, tax_type: e.target.value }))
                                             }
-                                            className="w-1/2 rounded-lg border border-zinc-200 px-3 py-2 text-xs font-medium outline-none focus:border-[#40295C]"
+                                            className="w-1/2 rounded-lg border border-zinc-200 px-3 py-2 text-xs font-medium outline-none focus:border-indigo-500"
                                         />
                                     </div>
 
@@ -925,7 +925,7 @@ const Products = () => {
                                                 savingTaxRate || !newTaxRate.name.trim() || !newTaxRate.rate_percent
                                             }
                                             onClick={createTaxRate}
-                                            className="rounded-lg bg-[#40295C] px-3 py-1.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                                            className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
                                         >
                                             {savingTaxRate ? "Saving..." : "Save Tax Rate"}
                                         </button>
@@ -1075,8 +1075,8 @@ const Products = () => {
                                             <label
                                                 key={location.id}
                                                 className={`flex cursor-pointer items-center gap-3 rounded-lg p-3 transition-colors ${selected
-                                                        ? "bg-[#40295C]/5"
-                                                        : "hover:bg-zinc-50"
+                                                    ? "bg-indigo-50"
+                                                    : "hover:bg-zinc-50"
                                                     }`}
                                             >
                                                 <input
@@ -1119,7 +1119,7 @@ const Products = () => {
                                                             };
                                                         });
                                                     }}
-                                                    className="h-4 w-4 accent-[#40295C]"
+                                                    className="h-4 w-4 accent-indigo-600"
                                                 />
 
                                                 <div className="flex flex-col">
@@ -1140,7 +1140,7 @@ const Products = () => {
 
                                 {form.business_location_ids.length > 0 && (
                                     <div className="mt-3 border-t border-zinc-100 pt-3">
-                                        <span className="text-xs font-semibold text-[#40295C]">
+                                        <span className="text-xs font-semibold text-indigo-600">
                                             {form.business_location_ids.length} location
                                             {form.business_location_ids.length !== 1 ? "s" : ""} selected
                                         </span>
@@ -1162,7 +1162,7 @@ const Products = () => {
                                 name="enable_stock"
                                 checked={form.enable_stock}
                                 onChange={handleChange}
-                                className="h-4 w-4 accent-[#40295C]"
+                                className="h-4 w-4 accent-indigo-600"
                             />
 
                             <div>
@@ -1184,7 +1184,7 @@ const Products = () => {
                         <button
                             type="submit"
                             disabled={saving}
-                            className="flex items-center gap-1.5 rounded-xl bg-[#40295C] px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[#321f49] disabled:cursor-not-allowed disabled:opacity-60"
+                            className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                             <Check size={14} />
                             {saving
@@ -1218,7 +1218,7 @@ const Products = () => {
                         value={search}
                         onChange={handleSearchChange}
                         placeholder="Search by product name or SKU..."
-                        className="w-full rounded-xl border border-zinc-200 bg-white py-3 pl-10 pr-4 text-sm outline-none focus:border-[#40295C]"
+                        className="w-full rounded-xl border border-zinc-200 bg-white py-3 pl-10 pr-4 text-sm outline-none focus:border-indigo-500"
                     />
                 </div>
             </div>
@@ -1255,7 +1255,7 @@ const Products = () => {
 
                                 <div className="flex items-start gap-4">
 
-                                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#40295C]/5 text-[#40295C]">
+                                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
                                         <Package size={18} />
                                     </div>
 
@@ -1337,7 +1337,7 @@ const Products = () => {
                                     <button
                                         type="button"
                                         onClick={() => openEditForm(product)}
-                                        className="rounded-lg border border-zinc-200 px-3 py-2 text-xs font-semibold text-zinc-600 hover:bg-zinc-50"
+                                        className="rounded-lg border border-zinc-200 px-3 py-2 text-xs font-semibold text-zinc-600 transition-colors hover:border-indigo-300 hover:text-indigo-600"
                                     >
                                         Edit
                                     </button>
